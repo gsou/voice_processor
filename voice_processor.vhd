@@ -37,6 +37,8 @@ architecture rtl of voice_processor is
   signal imm : std_logic;
   signal stop : std_logic;
 
+  signal start_cnt : std_logic;
+
 begin
 
   -- Instruction decode
@@ -67,7 +69,7 @@ begin
     elsif rising_edge(clk_i) then
       case state is
         when STDBY       => if start_i = '1' then state <= START; end if;
-        when START       => state <= INSTRUCTION;
+        when START       => if start_cnt = '1' then state <= INSTRUCTION; end if;
         when INSTRUCTION => if stop = '1' then state <= DONE; elsif imm = '1' then state <= IMMEDIATE; end if;
         when IMMEDIATE   => state <= INSTRUCTION;
         when DONE        => state <= STDBY;
@@ -86,6 +88,7 @@ begin
       ctrl_write_o <= 0;
       ctrl_inc_pc_o <= '0';
       done_o <= '0';
+      start_cnt <= '0';
     elsif rising_edge(clk_i) then
       case state is
         when STDBY       =>
@@ -95,6 +98,7 @@ begin
           ctrl_write_o <= 0;
           ctrl_inc_pc_o <= '0';
           done_o <= '0';
+          start_cnt <= '0';
         when START       =>
           ctrl_mux_o <= (others => '0');
           ctrl_read1_o <= (others => '0');
@@ -102,6 +106,7 @@ begin
           ctrl_write_o <= 0;
           ctrl_inc_pc_o <= '1';
           done_o <= '0';
+          start_cnt <= '1';
         when INSTRUCTION =>
           ctrl_mux_o <= opcode;
           ctrl_read1_o <= special1 & reg1;
@@ -109,6 +114,7 @@ begin
           ctrl_write_o <= to_integer(unsigned(regW));
           ctrl_inc_pc_o <= '1';
           done_o <= '0';
+          start_cnt <= '0';
         when IMMEDIATE   =>
           ctrl_mux_o <= (others => '0');
           ctrl_read1_o <= (others => '0');
@@ -116,6 +122,7 @@ begin
           ctrl_write_o <= 0;
           ctrl_inc_pc_o <= '1';
           done_o <= '0';
+          start_cnt <= '0';
         when DONE        =>
           ctrl_mux_o <= (others => '0');
           ctrl_read1_o <= (others => '0');
@@ -123,6 +130,7 @@ begin
           ctrl_write_o <= 0;
           ctrl_inc_pc_o <= '0';
           done_o <= '1';
+          start_cnt <= '0';
         when others      =>
           ctrl_mux_o <= (others => '0');
           ctrl_read1_o <= (others => '0');
@@ -130,6 +138,7 @@ begin
           ctrl_write_o <= 0;
           ctrl_inc_pc_o <= '0';
           done_o <= '0';
+          start_cnt <= '0';
       end case;
     end if;
   end process;

@@ -32,7 +32,7 @@ architecture rtl of voice_data is
 begin
 
   -- Output muxing
-  process (ctrl_mux_i, osc_out, env_out, lp_out, add_out, mul_out, mov_out, midi_out)
+  process (ctrl_mux_i, osc_out, env_out, lp_out, add_out, mul_out, mov_out, midi_out, shr_out)
   begin
     case ctrl_mux_i is
       when "0000" => data_out_o <= osc_out;

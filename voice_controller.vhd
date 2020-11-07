@@ -12,6 +12,10 @@ entity voice_controller is
     clk_i : in std_logic;
     sample_i : in std_logic;
 
+    -- Memory interface
+    i_addr_o : out std_logic_vector(4 downto 0);
+    i_data_i : in std_logic_vector(23 downto 0);
+
     -- TODO Preloading some midi values in the voice and accept commands
     -- midi_ev_i : in std_logic;
     -- midi_rel_i : in std_logic;
@@ -55,34 +59,14 @@ architecture rtl of voice_controller is
 
   signal sample_counter : std_logic_vector(23 downto 0);
 
-  -- TODO Use loadable BRAM
-  type imem_t is array (15 downto 0) of std_logic_vector(23 downto 0);
   signal program_counter : std_logic_vector(3 downto 0);
-  signal instruction_memory : imem_t;
 
   signal last_sample : std_logic;
 
 begin
 
-  -- Hardcoded instruction memory for testing
-  instruction_memory(0) <= x"03F126"; -- MIDI RF
-  instruction_memory(1) <= x"02F9F0"; -- SQR RF, RF
-  instruction_memory(2) <= x"800000"; -- Return
-  instruction_memory(3) <= x"800000"; --
-  instruction_memory(4) <= x"800000"; --
-  instruction_memory(5) <= x"800000"; --
-  instruction_memory(6) <= x"800000";
-  instruction_memory(7) <= x"800000";
-  instruction_memory(8) <= x"800000";
-  instruction_memory(9) <= x"800000"; -- Return
-  instruction_memory(10) <= x"800000";
-  instruction_memory(11) <= x"800000";
-  instruction_memory(12) <= x"800000";
-  instruction_memory(13) <= x"800000";
-  instruction_memory(14) <= x"800000";
-  instruction_memory(15) <= x"800000"; -- Return
-
-  instr <= instruction_memory(to_integer(unsigned(program_counter)));
+  instr <= i_data_i;
+  i_addr_o <= '0' & program_counter;
 
   process (clk_i)
   begin
@@ -123,7 +107,7 @@ begin
     elsif rising_edge(clk_i) then
       case state is
         when STDBY      => busy_o <= '0'; start_proc <= '0'; ctrl_bank <= 0;
-        when STARTVOICE => busy_o <= '1'; start_proc <= '1';
+        when STARTVOICE => busy_o <= '1'; start_proc <= '1'; program_counter <= (others => '0');
         when WAITVOICE  => busy_o <= '1'; start_proc <= '0'; if inc_pc = '1' then program_counter <= std_logic_vector(unsigned(program_counter) + 1); end if;
         when MIXSAMPLE  => busy_o <= '1'; start_proc <= '0'; -- TODO Add together voices
         when NEXTVOICE  => busy_o <= '1'; start_proc <= '0'; program_counter <= (others => '0'); -- ctrl_bank <= ctrl_bank + 1

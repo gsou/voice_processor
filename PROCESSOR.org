@@ -44,6 +44,10 @@ The 24bit instruction is made of
 - 22: Skip next instruction flag. Don't execute the next instruction
 - 23: Stop execution
 
+* Instruction memory
+
+Instruction memory is expected to have 1 cycle of latency
+
 * Example program
 
 |----------------+-------------------+--------------------------------------------------|
