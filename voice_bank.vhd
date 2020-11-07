@@ -35,7 +35,7 @@ begin
   data_read1_o <= regs(ctrl_bank_i, ctrl_read1_i);
   data_read2_o <= regs(ctrl_bank_i, ctrl_read2_i);
   -- Last register is always output sample
-  data_sample_o <= regs(ctrl_bank_i, WIDTH_REGS - 1);
+  data_sample_o <= regs(ctrl_bank_i, NUMREGS - 1);
   -- Sync Writes
   process (rst_i, clk_i)
   begin

@@ -2,6 +2,8 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 USE ieee.numeric_std.ALL;
 
+use work.voice.all;
+
 entity voice_controller is
   generic (NUMREGS : natural := 16;
            VOICES : natural := 1);
@@ -15,7 +17,7 @@ entity voice_controller is
     -- midi_rel_i : in std_logic;
     -- midi_key_i : in std_logic_vector(6 downto 0);
     -- midi_vel_i : in std_logic_vector(6 downto 0);
-    -- busy_o : out std_logic;
+    busy_o : out std_logic;
 
     sample_o : out std_logic_vector(23 downto 0));
 
@@ -36,6 +38,7 @@ architecture rtl of voice_controller is
   signal data_read1 : std_logic_vector(23 downto 0);
   signal data_read1_imm : std_logic_vector(23 downto 0);
   signal data_read2 : std_logic_vector(23 downto 0);
+  signal data_read2_imm : std_logic_vector(23 downto 0);
   signal data_write : std_logic_vector(23 downto 0);
   signal data_sample : std_logic_vector(23 downto 0);
 
@@ -91,16 +94,16 @@ begin
       ctrl_bank <= 0; -- Current voice
       sample_o <= (others => '0');
       program_counter <= 0;
+      busy_o <= '0';
     elsif rising_edge(clk_i) then
       case state is
-        when STDBY      => start_proc <= '0'; ctrl_bank <= 0;
-        when STARTVOICE => start_proc <= '1';
-        when WAITVOICE  => start_proc <= '0'; if inc_pc = '1' then program_counter <= program_counter + 1; end if;
-        when MIXSAMPLE  => start_proc <= '0'; -- TODO Add together voices when
-                                              -- there are multiple
-        when NEXTVOICE  => start_proc <= '0'; ctrl_bank <= ctrl_bank + 1; program_counter <= 0;
-        when PUSH       => start_proc <= '0'; sample_o <= data_sample; sample_counter <= std_logic_vector(unsigned(sample_counter) + 1);
-        when others     => start_proc <= '0'; ctrl_bank <= 0; sample_o <= (others => '0'); program_counter <= 0;
+        when STDBY      => busy_o <= '0'; start_proc <= '0'; ctrl_bank <= 0;
+        when STARTVOICE => busy_o <= '1'; start_proc <= '1';
+        when WAITVOICE  => busy_o <= '1'; start_proc <= '0'; if inc_pc = '1' then program_counter <= program_counter + 1; end if;
+        when MIXSAMPLE  => busy_o <= '1'; start_proc <= '0'; -- TODO Add together voices
+        when NEXTVOICE  => busy_o <= '1'; start_proc <= '0'; program_counter <= 0; -- ctrl_bank <= ctrl_bank + 1
+        when PUSH       => busy_o <= '1'; start_proc <= '0'; sample_o <= data_sample; sample_counter <= std_logic_vector(unsigned(sample_counter) + 1);
+        when others     => busy_o <= '1'; start_proc <= '0'; ctrl_bank <= 0; sample_o <= (others => '0'); program_counter <= 0;
       end case;
     end if;
   end process;

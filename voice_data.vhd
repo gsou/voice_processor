@@ -2,6 +2,8 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.numeric_std.ALL;
 
+use work.voice.all;
+
 entity voice_data is
   generic (WIDTH_REGS : natural := 24);
   port(
@@ -21,7 +23,7 @@ architecture rtl of voice_data is
   signal osc_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
   signal env_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
   signal lp_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
-  signal add_out : std_logic_vector(WIDTH_REGS downto 0);
+  signal add_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
   signal mul_out : std_logic_vector(2*WIDTH_REGS - 1 downto 0);
   signal mov_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
   signal midi_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
@@ -77,5 +79,5 @@ begin
   mov_out <= data_in1_i;
 
   -- Midi lookup
-  midi : midi_lookup port map (midi_i => data_in1_i(6 downto 0), counter_i => data_in2_i, freq_o => midi_out);
+  midi : midi_lookup port map (midi_i => data_in1_i(6 downto 0), counter_i => unsigned(data_in2_i), freq_o => midi_out);
 end;
