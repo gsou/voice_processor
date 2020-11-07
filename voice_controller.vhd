@@ -52,8 +52,8 @@ architecture rtl of voice_controller is
   signal sample_counter : std_logic_vector(23 downto 0);
 
   -- TODO Use loadable BRAM
-  type imem_t is array (8 downto 0) of std_logic_vector(23 downto 0);
-  signal program_counter : std_logic_vector(2 downto 0);
+  type imem_t is array (15 downto 0) of std_logic_vector(23 downto 0);
+  signal program_counter : std_logic_vector(3 downto 0);
   signal instruction_memory : imem_t;
 
   signal last_sample : std_logic;
@@ -67,9 +67,16 @@ begin
   instruction_memory(3) <= x"00100D"; -- Load immediate to reg 1
   instruction_memory(4) <= x"000003"; -- R1 := Triangle wave
   instruction_memory(5) <= x"00F1F0"; -- Run oscillator RF <= Triangle(RF)
-  instruction_memory(6) <= x"00000F"; -- Return
+  instruction_memory(6) <= x"00000F";
   instruction_memory(7) <= x"00000F";
   instruction_memory(8) <= x"00000F";
+  instruction_memory(9) <= x"00000F"; -- Return
+  instruction_memory(10) <= x"00000F";
+  instruction_memory(11) <= x"00000F";
+  instruction_memory(12) <= x"00000F";
+  instruction_memory(13) <= x"00000F";
+  instruction_memory(14) <= x"00000F";
+  instruction_memory(15) <= x"00000F"; -- Return
 
   instr <= instruction_memory(to_integer(unsigned(program_counter)));
 

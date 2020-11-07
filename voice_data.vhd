@@ -27,6 +27,7 @@ architecture rtl of voice_data is
   signal mul_out : std_logic_vector(2*WIDTH_REGS - 1 downto 0);
   signal mov_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
   signal midi_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
+  signal shr_out : signed(WIDTH_REGS - 1 downto 0);
 
 begin
 
@@ -41,6 +42,7 @@ begin
       when "100" => data_out_o <= mul_out(2*WIDTH_REGS - 1 downto WIDTH_REGS);
       when "101" => data_out_o <= mov_out;
       when "110" => data_out_o <= midi_out;
+      when "111" => data_out_o <= std_logic_vector(shr_out);
       when others => data_out_o <= (others => '0');
     end case;
   end process;
@@ -59,9 +61,9 @@ begin
       when "10"   => osc_out <= data_in1_i; -- xor ('1' & (WIDTH_REGS-2 downto 0 => '0'));
                      -- Triangle
       when "11"   => if data_in1_i(WIDTH_REGS-1) = '1' then
-                       osc_out <= not  (data_in1_i(WIDTH_REGS-2 downto 0) & '0');
+                       osc_out <= data_in1_i(WIDTH_REGS - 2) & not (data_in1_i(WIDTH_REGS-3 downto 0) & '0');
                      else
-                       osc_out <= (data_in1_i(WIDTH_REGS-2 downto 0) & '0');
+                       osc_out <= (not data_in1_i(WIDTH_REGS - 2)) & (data_in1_i(WIDTH_REGS-3 downto 0) & '0');
                      end if;
       when others => osc_out <= (others => '0');
     end case;
@@ -77,10 +79,14 @@ begin
   add_out <= std_logic_vector(unsigned(data_in1_i) + unsigned(data_in2_i));
 
   -- Combinatorial multiplier, should be inferred as a hardware multiplier block
-  mul_out <= std_logic_vector(signed(data_in1_i) * signed(data_in2_i));
+  -- TODO Its broken
+  mul_out <= (others => '0'); -- std_logic_vector(unsigned(data_in1_i) * unsigned(data_in2_i));
 
   -- Mov
   mov_out <= data_in1_i;
+
+  -- TODO Make it work Shr
+  shr_out <= shift_right(signed(data_in1_i), to_integer(unsigned(data_in2_i)));
 
   -- Midi lookup
   midi : midi_lookup port map (midi_i => data_in1_i(6 downto 0), counter_i => unsigned(data_in2_i), freq_o => midi_out);
