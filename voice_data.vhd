@@ -70,7 +70,8 @@ begin
   end process;
 
   -- TODO Combinatorial Enveloppe
-  env_out <= (others => '0');
+  -- For now it is only on when key pressed
+  env_out <= (others => data_in1_i(7));
 
   -- TODO Combinatorial Filter
   lp_out <= (others => '0');
@@ -80,7 +81,7 @@ begin
 
   -- Combinatorial multiplier, should be inferred as a hardware multiplier block
   -- TODO Its broken
-  mul_out <= (others => '0'); -- std_logic_vector(unsigned(data_in1_i) * unsigned(data_in2_i));
+  mul_out <= std_logic_vector(unsigned(data_in1_i) * unsigned(data_in2_i));
 
   -- Mov
   mov_out <= data_in1_i;

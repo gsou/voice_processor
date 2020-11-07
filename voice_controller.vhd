@@ -16,11 +16,12 @@ entity voice_controller is
     i_addr_o : out std_logic_vector(4 downto 0);
     i_data_i : in std_logic_vector(23 downto 0);
 
-    -- TODO Preloading some midi values in the voice and accept commands
-    -- midi_ev_i : in std_logic;
-    -- midi_rel_i : in std_logic;
-    -- midi_key_i : in std_logic_vector(6 downto 0);
-    -- midi_vel_i : in std_logic_vector(6 downto 0);
+    -- Accept Midi commands
+    midi_ev_i : in std_logic;
+    midi_rel_i : in std_logic;
+    midi_key_i : in std_logic_vector(6 downto 0);
+    midi_vel_i : in std_logic_vector(6 downto 0);
+
     busy_o : out std_logic;
 
     sample_o : out std_logic_vector(23 downto 0));
@@ -29,7 +30,7 @@ end entity;
 
 architecture rtl of voice_controller is
 
-  type state_t is (STDBY, STARTVOICE, WAITVOICE, MIXSAMPLE, NEXTVOICE, PUSH);
+  type state_t is (STDBY, MIDICMD, STARTVOICE, WAITVOICE, MIXSAMPLE, NEXTVOICE, PUSH);
   signal state : state_t := STDBY;
 
   signal read1 : integer range 0 to NUMREGS - 1;
@@ -63,6 +64,14 @@ architecture rtl of voice_controller is
 
   signal last_sample : std_logic;
 
+  -- Midi commands and registers
+  signal midi_key_f : std_logic_vector(6 downto 0);
+  signal midi_vel_f : std_logic_vector(6 downto 0);
+  signal midi_rel_f : std_logic;
+  signal midi_ev_f : std_logic;
+  signal reg_midi_key : std_logic_vector(7 downto 0);
+  signal reg_midi_vel : std_logic_vector(6 downto 0);
+
 begin
 
   instr <= i_data_i;
@@ -72,6 +81,10 @@ begin
   begin
     if rising_edge(clk_i) then
       last_sample <= sample_i;
+      midi_key_f <= midi_key_i;
+      midi_vel_f <= midi_vel_i;
+      midi_rel_f <= midi_rel_i;
+      midi_ev_f <= midi_ev_i;
     end if;
   end process;
 
@@ -82,7 +95,8 @@ begin
       state <= STDBY;
     elsif rising_edge(clk_i) then
       case state is
-        when STDBY      => if sample_i = '1' and last_sample = '0' then state <= STARTVOICE; end if;
+        when STDBY      => if midi_ev_i = '1' and midi_ev_f = '0' then state <= MIDICMD; elsif sample_i = '1' and last_sample = '0' then state <= STARTVOICE; end if;
+        when MIDICMD    => state <= STDBY;
         when STARTVOICE => state <= WAITVOICE;
         when WAITVOICE  => if done = '1' then state <= MIXSAMPLE; end if;
         when MIXSAMPLE  => if ctrl_bank = VOICES - 1 then state <= PUSH; else state <= NEXTVOICE; end if;
@@ -104,9 +118,12 @@ begin
       sample_counter <= (others => '0');
       program_counter <= (others => '0');
       busy_o <= '0';
+      reg_midi_key <= x"45"; -- TODO Real value (others => '0');
+      reg_midi_vel <= (others => '0');
     elsif rising_edge(clk_i) then
       case state is
         when STDBY      => busy_o <= '0'; start_proc <= '0'; ctrl_bank <= 0;
+        when MIDICMD    => busy_o <= '1'; start_proc <= '0'; reg_midi_key <= midi_rel_f & midi_key_f; reg_midi_vel <= midi_vel_f; if midi_rel_f = '0' then sample_counter <= (others => '0'); end if;
         when STARTVOICE => busy_o <= '1'; start_proc <= '1'; program_counter <= (others => '0');
         when WAITVOICE  => busy_o <= '1'; start_proc <= '0'; if inc_pc = '1' then program_counter <= std_logic_vector(unsigned(program_counter) + 1); end if;
         when MIXSAMPLE  => busy_o <= '1'; start_proc <= '0'; -- TODO Add together voices
@@ -121,13 +138,13 @@ begin
   data_read2_imm <= data_read2_sp when ctrl_read2(4) = '1' else data_read2;
 
   -- Special registers
-  process (ctrl_read1, ctrl_read2, instr, sample_counter)
+  process (ctrl_read1, ctrl_read2, instr, sample_counter, reg_midi_key, reg_midi_vel)
   begin
     case ctrl_read1(3 downto 0) is
       when x"0" => data_read1_sp <= instr;
       when x"1" => data_read1_sp <= sample_counter;
-      when x"2" => data_read1_sp <= x"000045"; -- A4
-      when x"3" => data_read1_sp <= x"00007F";
+      when x"2" => data_read1_sp <= x"0000" & reg_midi_key;
+      when x"3" => data_read1_sp <= x"0000" & '0' & reg_midi_vel;
       when x"7" => data_read1_sp <= x"00000C";
       when x"8" => data_read1_sp <= x"000000";
       when x"9" => data_read1_sp <= x"000001";
@@ -142,8 +159,8 @@ begin
     case ctrl_read2(3 downto 0) is
       when x"0" => data_read2_sp <= instr;
       when x"1" => data_read2_sp <= sample_counter;
-      when x"2" => data_read2_sp <= x"000045"; -- A4
-      when x"3" => data_read2_sp <= x"00007F";
+      when x"2" => data_read2_sp <= x"0000" & reg_midi_key;
+      when x"3" => data_read2_sp <= x"0000" & '0' & reg_midi_vel;
       when x"7" => data_read2_sp <= x"00000C";
       when x"8" => data_read2_sp <= x"000000";
       when x"9" => data_read2_sp <= x"000001";
