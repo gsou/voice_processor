@@ -128,6 +128,7 @@ begin
       when x"1" => data_read1_sp <= sample_counter;
       when x"2" => data_read1_sp <= x"000045"; -- A4
       when x"3" => data_read1_sp <= x"00007F";
+      when x"7" => data_read1_sp <= x"00000C";
       when x"8" => data_read1_sp <= x"000000";
       when x"9" => data_read1_sp <= x"000001";
       when x"A" => data_read1_sp <= x"000002";
@@ -143,6 +144,7 @@ begin
       when x"1" => data_read2_sp <= sample_counter;
       when x"2" => data_read2_sp <= x"000045"; -- A4
       when x"3" => data_read2_sp <= x"00007F";
+      when x"7" => data_read2_sp <= x"00000C";
       when x"8" => data_read2_sp <= x"000000";
       when x"9" => data_read2_sp <= x"000001";
       when x"A" => data_read2_sp <= x"000002";

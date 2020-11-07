@@ -85,7 +85,7 @@ begin
   -- Mov
   mov_out <= data_in1_i;
 
-  -- TODO Make it work Shr
+  -- Shr
   shr_out <= shift_right(signed(data_in1_i), to_integer(unsigned(data_in2_i)));
 
   -- Midi lookup
