@@ -31,7 +31,7 @@ architecture rtl of voice_data is
 begin
 
   -- Output muxing
-  process (ctrl_mux_i)
+  process (ctrl_mux_i, osc_out, env_out, lp_out, add_out, mul_out, mov_out, midi_out)
   begin
     case ctrl_mux_i is
       when "000" => data_out_o <= osc_out;
@@ -50,15 +50,19 @@ begin
   process (osc_type)
   begin
     case osc_type is
-                     -- No oscillator
+                     -- TODO Sine
       when "00"   => osc_out <= (others => '0');
                      -- Square
       when "01"   => osc_out(WIDTH_REGS - 1) <= data_in1_i(WIDTH_REGS-1);
                      osc_out(WIDTH_REGS - 2 downto 0) <= (others => not data_in1_i(WIDTH_REGS-1));
                      -- Saw
       when "10"   => osc_out <= data_in1_i; -- xor ('1' & (WIDTH_REGS-2 downto 0 => '0'));
-                     -- TODO Triangle
-      when "11"   => osc_out <= (others => '0');
+                     -- Triangle
+      when "11"   => if data_in1_i(WIDTH_REGS-1) = '1' then
+                       osc_out <= not  (data_in1_i(WIDTH_REGS-2 downto 0) & '0');
+                     else
+                       osc_out <= (data_in1_i(WIDTH_REGS-2 downto 0) & '0');
+                     end if;
       when others => osc_out <= (others => '0');
     end case;
   end process;

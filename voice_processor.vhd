@@ -23,7 +23,7 @@ end entity;
 
 architecture rtl of voice_processor is
 
-  type state_t is (STDBY, INSTRUCTION, IMMEDIATE, DONE);
+  type state_t is (STDBY, START, INSTRUCTION, IMMEDIATE, DONE);
   signal state : state_t := STDBY;
 
   -- Instruction decode
@@ -57,7 +57,8 @@ begin
       state <= STDBY;
     elsif rising_edge(clk_i) then
       case state is
-        when STDBY       => if start_i = '1' then state <= INSTRUCTION; end if;
+        when STDBY       => if start_i = '1' then state <= START; end if;
+        when START       => state <= INSTRUCTION;
         when INSTRUCTION => if opcode = x"F" then state <= DONE; elsif opcode(3) = '1' then state <= IMMEDIATE; end if;
         when IMMEDIATE   => state <= INSTRUCTION;
         when DONE        => state <= STDBY;
@@ -85,6 +86,13 @@ begin
           ctrl_write_o <= 0;
           ctrl_inc_pc_o <= '0';
           done_o <= '0';
+        when START       =>
+          ctrl_mux_o <= (others => '0');
+          ctrl_read1_o <= 0;
+          ctrl_read2_o <= 0;
+          ctrl_write_o <= 0;
+          ctrl_inc_pc_o <= '1';
+          done_o <= '0';
         when INSTRUCTION =>
           ctrl_mux_o <= opcode(2 downto 0);
           ctrl_read1_o <= to_integer(unsigned(reg1));
@@ -93,10 +101,10 @@ begin
           ctrl_inc_pc_o <= '1';
           done_o <= '0';
         when IMMEDIATE   =>
-          ctrl_mux_o <= "101"; -- MOV
+          ctrl_mux_o <= (others => '0');
           ctrl_read1_o <= 0;
           ctrl_read2_o <= 0;
-          ctrl_write_o <= to_integer(unsigned(last_regW));
+          ctrl_write_o <= 0;
           ctrl_inc_pc_o <= '1';
           done_o <= '0';
         when DONE        =>

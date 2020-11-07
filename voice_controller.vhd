@@ -52,19 +52,33 @@ architecture rtl of voice_controller is
   signal sample_counter : std_logic_vector(23 downto 0);
 
   -- TODO Use loadable BRAM
-  type imem_t is array (3 downto 0) of std_logic_vector(23 downto 0);
-  signal program_counter : integer range 0 to 3;
+  type imem_t is array (8 downto 0) of std_logic_vector(23 downto 0);
+  signal program_counter : std_logic_vector(2 downto 0);
   signal instruction_memory : imem_t;
+
+  signal last_sample : std_logic;
 
 begin
 
   -- Hardcoded instruction memory for testing
-  instruction_memory(0) <= x"001008"; -- Load immediate to reg 1
-  instruction_memory(1) <= x"00002D"; -- R1 := 45
+  instruction_memory(0) <= x"00100D"; -- Load immediate to reg 1
+  instruction_memory(1) <= x"000045"; -- R1 := A4
   instruction_memory(2) <= x"00F016"; -- Midi sample note at R1, write to R15 (output)
-  instruction_memory(3) <= x"00000F"; -- Return
+  instruction_memory(3) <= x"00100D"; -- Load immediate to reg 1
+  instruction_memory(4) <= x"000003"; -- R1 := Triangle wave
+  instruction_memory(5) <= x"00F1F0"; -- Run oscillator RF <= Triangle(RF)
+  instruction_memory(6) <= x"00000F"; -- Return
+  instruction_memory(7) <= x"00000F";
+  instruction_memory(8) <= x"00000F";
 
-  instr <= instruction_memory(program_counter);
+  instr <= instruction_memory(to_integer(unsigned(program_counter)));
+
+  process (clk_i)
+  begin
+    if rising_edge(clk_i) then
+      last_sample <= sample_i;
+    end if;
+  end process;
 
   -- Main statemachine
   process (rst_i, clk_i)
@@ -73,7 +87,7 @@ begin
       state <= STDBY;
     elsif rising_edge(clk_i) then
       case state is
-        when STDBY      => if sample_i = '1' then state <= STARTVOICE; end if;
+        when STDBY      => if sample_i = '1' and last_sample = '0' then state <= STARTVOICE; end if;
         when STARTVOICE => state <= WAITVOICE;
         when WAITVOICE  => if done = '1' then state <= MIXSAMPLE; end if;
         when MIXSAMPLE  => if ctrl_bank = VOICES - 1 then state <= PUSH; else state <= NEXTVOICE; end if;
@@ -89,21 +103,21 @@ begin
   process (rst_i, clk_i)
   begin
     if rst_i = '1' then
-      -- TODO Add instr reading from array
       start_proc <= '0';
       ctrl_bank <= 0; -- Current voice
       sample_o <= (others => '0');
-      program_counter <= 0;
+      sample_counter <= (others => '0');
+      program_counter <= (others => '0');
       busy_o <= '0';
     elsif rising_edge(clk_i) then
       case state is
         when STDBY      => busy_o <= '0'; start_proc <= '0'; ctrl_bank <= 0;
         when STARTVOICE => busy_o <= '1'; start_proc <= '1';
-        when WAITVOICE  => busy_o <= '1'; start_proc <= '0'; if inc_pc = '1' then program_counter <= program_counter + 1; end if;
+        when WAITVOICE  => busy_o <= '1'; start_proc <= '0'; if inc_pc = '1' then program_counter <= std_logic_vector(unsigned(program_counter) + 1); end if;
         when MIXSAMPLE  => busy_o <= '1'; start_proc <= '0'; -- TODO Add together voices
-        when NEXTVOICE  => busy_o <= '1'; start_proc <= '0'; program_counter <= 0; -- ctrl_bank <= ctrl_bank + 1
+        when NEXTVOICE  => busy_o <= '1'; start_proc <= '0'; program_counter <= (others => '0'); -- ctrl_bank <= ctrl_bank + 1
         when PUSH       => busy_o <= '1'; start_proc <= '0'; sample_o <= data_sample; sample_counter <= std_logic_vector(unsigned(sample_counter) + 1);
-        when others     => busy_o <= '1'; start_proc <= '0'; ctrl_bank <= 0; sample_o <= (others => '0'); program_counter <= 0;
+        when others     => busy_o <= '1'; start_proc <= '0'; ctrl_bank <= 0; sample_o <= (others => '0'); program_counter <= (others => '0');
       end case;
     end if;
   end process;
@@ -118,7 +132,7 @@ begin
               data_write_i => data_write, data_read1_o => data_read1, data_read2_o => data_read2, data_sample_o => data_sample);
 
   alu: voice_data generic map (WIDTH_REGS => 24)
-    port map (ctrl_mux_i => ctrl_mux, data_in1_i => data_read1_imm, data_in2_i => data_read2, data_out_o => data_write);
+    port map (ctrl_mux_i => ctrl_mux, data_in1_i => data_read1_imm, data_in2_i => data_read2_imm, data_out_o => data_write);
 
   processor : voice_processor generic map (NUMREGS => NUMREGS)
     port map (rst_i => rst_i, clk_i => clk_i, ctrl_mux_o => ctrl_mux, ctrl_read1_o => ctrl_read1,

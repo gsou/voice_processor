@@ -74,4 +74,12 @@ package voice is
       );
   end component;
 
+  component dac is
+    generic (SAMPLE_WIDTH : natural := 24);
+    port (rst_i : in std_logic;
+          clk_i : in std_logic;
+          sample_i : in std_logic_vector(SAMPLE_WIDTH - 1 downto 0);
+          dac_o : out std_logic);
+  end component;
+
 end voice;
