@@ -38,7 +38,7 @@ package voice is
     generic (WIDTH_REGS : natural := 24);
     port(
       -- Control ports
-      ctrl_mux_i : in std_logic_vector(2 downto 0);
+      ctrl_mux_i : in std_logic_vector(3 downto 0);
       -- Data ports
       data_in1_i : in std_logic_vector(WIDTH_REGS - 1 downto 0);
       data_in2_i : in std_logic_vector(WIDTH_REGS - 1 downto 0);
@@ -54,9 +54,9 @@ package voice is
       clk_i : in std_logic;
       -- Control
 
-      ctrl_mux_o : out std_logic_vector(2 downto 0);
-      ctrl_read1_o : out integer range 0 to NUMREGS - 1;
-      ctrl_read2_o : out integer range 0 to NUMREGS - 1;
+      ctrl_mux_o : out std_logic_vector(3 downto 0);
+      ctrl_read1_o : out std_logic_vector(4 downto 0);
+      ctrl_read2_o : out std_logic_vector(4 downto 0);
       ctrl_write_o : out integer range 0 to NUMREGS - 1;
 
       ctrl_inc_pc_o : out std_logic;

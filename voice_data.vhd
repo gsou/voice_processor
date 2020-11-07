@@ -8,7 +8,7 @@ entity voice_data is
   generic (WIDTH_REGS : natural := 24);
   port(
     -- Control ports
-    ctrl_mux_i : in std_logic_vector(2 downto 0);
+    ctrl_mux_i : in std_logic_vector(3 downto 0);
     -- Data ports
     data_in1_i : in std_logic_vector(WIDTH_REGS - 1 downto 0);
     data_in2_i : in std_logic_vector(WIDTH_REGS - 1 downto 0);
@@ -35,14 +35,14 @@ begin
   process (ctrl_mux_i, osc_out, env_out, lp_out, add_out, mul_out, mov_out, midi_out)
   begin
     case ctrl_mux_i is
-      when "000" => data_out_o <= osc_out;
-      when "001" => data_out_o <= env_out;
-      when "010" => data_out_o <= lp_out;
-      when "011" => data_out_o <= add_out;
-      when "100" => data_out_o <= mul_out(2*WIDTH_REGS - 1 downto WIDTH_REGS);
-      when "101" => data_out_o <= mov_out;
-      when "110" => data_out_o <= midi_out;
-      when "111" => data_out_o <= std_logic_vector(shr_out);
+      when "0000" => data_out_o <= osc_out;
+      when "0001" => data_out_o <= env_out;
+      when "0010" => data_out_o <= lp_out;
+      when "0011" => data_out_o <= add_out;
+      when "0100" => data_out_o <= mul_out(2*WIDTH_REGS - 1 downto WIDTH_REGS);
+      when "0101" => data_out_o <= mov_out;
+      when "0110" => data_out_o <= midi_out;
+      when "0111" => data_out_o <= std_logic_vector(shr_out);
       when others => data_out_o <= (others => '0');
     end case;
   end process;

@@ -31,14 +31,18 @@ architecture rtl of voice_controller is
   signal read1 : integer range 0 to NUMREGS - 1;
 
   -- Control interconnects
-  signal ctrl_read1 : integer range 0 to NUMREGS - 1;
-  signal ctrl_read2 : integer range 0 to NUMREGS - 1;
+  signal ctrl_read1_bank : integer range 0 to NUMREGS - 1;
+  signal ctrl_read2_bank : integer range 0 to NUMREGS - 1;
+  signal ctrl_read1 : std_logic_vector(4 downto 0);
+  signal ctrl_read2 : std_logic_vector(4 downto 0);
   signal ctrl_write : integer range 0 to NUMREGS - 1;
-  signal ctrl_mux   : std_logic_vector(2 downto 0);
+  signal ctrl_mux   : std_logic_vector(3 downto 0);
   signal data_read1 : std_logic_vector(23 downto 0);
   signal data_read1_imm : std_logic_vector(23 downto 0);
+  signal data_read1_sp : std_logic_vector(23 downto 0);
   signal data_read2 : std_logic_vector(23 downto 0);
   signal data_read2_imm : std_logic_vector(23 downto 0);
+  signal data_read2_sp : std_logic_vector(23 downto 0);
   signal data_write : std_logic_vector(23 downto 0);
   signal data_sample : std_logic_vector(23 downto 0);
 
@@ -61,22 +65,22 @@ architecture rtl of voice_controller is
 begin
 
   -- Hardcoded instruction memory for testing
-  instruction_memory(0) <= x"00100D"; -- Load immediate to reg 1
-  instruction_memory(1) <= x"000045"; -- R1 := A4
-  instruction_memory(2) <= x"00F016"; -- Midi sample note at R1, write to R15 (output)
-  instruction_memory(3) <= x"00100D"; -- Load immediate to reg 1
-  instruction_memory(4) <= x"000003"; -- R1 := Triangle wave
-  instruction_memory(5) <= x"00F1F0"; -- Run oscillator RF <= Triangle(RF)
-  instruction_memory(6) <= x"00000F";
-  instruction_memory(7) <= x"00000F";
-  instruction_memory(8) <= x"00000F";
-  instruction_memory(9) <= x"00000F"; -- Return
-  instruction_memory(10) <= x"00000F";
-  instruction_memory(11) <= x"00000F";
-  instruction_memory(12) <= x"00000F";
-  instruction_memory(13) <= x"00000F";
-  instruction_memory(14) <= x"00000F";
-  instruction_memory(15) <= x"00000F"; -- Return
+  instruction_memory(0) <= x"03F126"; -- MIDI RF
+  instruction_memory(1) <= x"02F9F0"; -- SQR RF, RF
+  instruction_memory(2) <= x"800000"; -- Return
+  instruction_memory(3) <= x"800000"; --
+  instruction_memory(4) <= x"800000"; --
+  instruction_memory(5) <= x"800000"; --
+  instruction_memory(6) <= x"800000";
+  instruction_memory(7) <= x"800000";
+  instruction_memory(8) <= x"800000";
+  instruction_memory(9) <= x"800000"; -- Return
+  instruction_memory(10) <= x"800000";
+  instruction_memory(11) <= x"800000";
+  instruction_memory(12) <= x"800000";
+  instruction_memory(13) <= x"800000";
+  instruction_memory(14) <= x"800000";
+  instruction_memory(15) <= x"800000"; -- Return
 
   instr <= instruction_memory(to_integer(unsigned(program_counter)));
 
@@ -129,13 +133,51 @@ begin
     end if;
   end process;
 
-  data_read1_imm <= instr          when ctrl_read1 = 0 else data_read1;
-  data_read2_imm <= sample_counter when ctrl_read2 = 0 else data_read2;
+  data_read1_imm <= data_read1_sp when ctrl_read1(4) = '1' else data_read1;
+  data_read2_imm <= data_read2_sp when ctrl_read2(4) = '1' else data_read2;
+
+  -- Special registers
+  process (ctrl_read1, ctrl_read2, instr, sample_counter)
+  begin
+    case ctrl_read1(3 downto 0) is
+      when x"0" => data_read1_sp <= instr;
+      when x"1" => data_read1_sp <= sample_counter;
+      when x"2" => data_read1_sp <= x"000045"; -- A4
+      when x"3" => data_read1_sp <= x"00007F";
+      when x"8" => data_read1_sp <= x"000000";
+      when x"9" => data_read1_sp <= x"000001";
+      when x"A" => data_read1_sp <= x"000002";
+      when x"B" => data_read1_sp <= x"000003";
+      when x"C" => data_read1_sp <= x"000004";
+      when x"D" => data_read1_sp <= x"000005";
+      when x"E" => data_read1_sp <= x"000006";
+      when x"F" => data_read1_sp <= x"000007";
+      when others => data_read1_sp <= x"000000";
+    end case;
+    case ctrl_read2(3 downto 0) is
+      when x"0" => data_read2_sp <= instr;
+      when x"1" => data_read2_sp <= sample_counter;
+      when x"2" => data_read2_sp <= x"000045"; -- A4
+      when x"3" => data_read2_sp <= x"00007F";
+      when x"8" => data_read2_sp <= x"000000";
+      when x"9" => data_read2_sp <= x"000001";
+      when x"A" => data_read2_sp <= x"000002";
+      when x"B" => data_read2_sp <= x"000003";
+      when x"C" => data_read2_sp <= x"000004";
+      when x"D" => data_read2_sp <= x"000005";
+      when x"E" => data_read2_sp <= x"000006";
+      when x"F" => data_read2_sp <= x"000007";
+      when others => data_read2_sp <= x"000000";
+    end case;
+  end process;
+
+  ctrl_read1_bank <= to_integer(unsigned(ctrl_read1(3 downto 0)));
+  ctrl_read2_bank <= to_integer(unsigned(ctrl_read2(3 downto 0)));
 
   -- Register bank
   register_bank : voice_bank generic map (VOICES => VOICES, NUMREGS => 16, WIDTH_REGS => 24)
-    port map (rst_i => rst_i, clk_i => clk_i, ctrl_bank_i => ctrl_bank, ctrl_read1_i => ctrl_read1,
-              ctrl_read2_i => ctrl_read2, ctrl_write_i => ctrl_write,
+    port map (rst_i => rst_i, clk_i => clk_i, ctrl_bank_i => ctrl_bank, ctrl_read1_i => ctrl_read1_bank,
+              ctrl_read2_i => ctrl_read2_bank, ctrl_write_i => ctrl_write,
               data_write_i => data_write, data_read1_o => data_read1, data_read2_o => data_read2, data_sample_o => data_sample);
 
   alu: voice_data generic map (WIDTH_REGS => 24)

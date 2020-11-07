@@ -1,0 +1,55 @@
+#+TITLE: Processor
+
+This document is for the 24bit voice processor.
+
+
+* Intruction Set
+
+The 24bit instruction is made of
+
+- 3..0: The ALU Mux position
+  | 0 | Oscillator (W <= OscillatorType[R2](R1))       |
+  | 1 | TODO Enveloppe                                 |
+  | 2 | TODO LP filter                                 |
+  | 3 | Add instruction (W <= R1 + R2)                 |
+  | 4 | Mul instruction (W <= R1 * R2)                 |
+  | 5 | Mov instruction (W <= R1)                      |
+  | 6 | Midi Note to freq (W <= to_freq_step(R1) * R2) |
+  | 7 | Shr instruction (W <= R1 >> R2)                |
+  | 8 | Others (W <= 0)                                |
+- 7..4: Register 1 Selection
+  In register mode, this is the register ID. In special mode, it is:
+  | 0 | Next Instruction               |
+  | 1 | Sample counter since Note Down |
+  | 2 | Midi Note Down                 |
+  | 3 | Midi Velocity                  |
+  | 4 |                                |
+  | 5 |                                |
+  | 6 |                                |
+  | 7 |                                |
+  | 8 | Constant 0                     |
+  | 9 | Constant 1                     |
+  | A | Constant 2                     |
+  | B | Constant 3                     |
+  | C | Constant 4                     |
+  | D | Constant 5                     |
+  | E | Constant 6                     |
+  | F | Constant 7                     |
+
+- 11..8: Register 2 Selection
+- 15..12: Write register selection
+- 16: Register 1 special mode
+- 17: Register 2 special mode
+- 21..18: Unused
+- 22: Skip next instruction flag. Don't execute the next instruction
+- 23: Stop execution
+
+* Example program
+
+|----------------+-------------------+--------------------------------------------------|
+| ASM            |       Instruction | Description                                      |
+|----------------+-------------------+--------------------------------------------------|
+| MIDI           |          0x03F126 | Perform a index lookup for the current midi note |
+| R1 := 1        | 0x401005 0x000001 | Immediate load 1 (Square Oscillator Type)        |
+| OSC RF, R1, RF |          0x00F1F0 | Run the oscillator                               |
+|----------------+-------------------+--------------------------------------------------|
