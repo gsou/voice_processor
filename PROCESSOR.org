@@ -2,6 +2,13 @@
 
 This document is for the 24bit voice processor.
 
+* Features
+
+- Works at over 50MHz
+- Serial execution of multiple voices.
+- Each voice can have completely different
+- 1 cycle execution for osillators, enveloppes, filters
+- 2 cycle execution of commands with immediate values
 
 * Intruction Set
 
@@ -26,7 +33,7 @@ The 24bit instruction is made of
   | 4 |                                |
   | 5 |                                |
   | 6 |                                |
-  | 7 | Constant 12                    |
+  | 7 | Constant 12 (Midi octave)      |
   | 8 | Constant 0                     |
   | 9 | Constant 1                     |
   | A | Constant 2                     |
