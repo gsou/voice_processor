@@ -12,6 +12,8 @@ entity voice_special is
     instr_i : in std_logic_vector(23 downto 0);
     sc_i : in std_logic_vector(23 downto 0);
 
+    tap_key : out std_logic_vector(7 downto 0);
+
     -- Write port (for midi)
     midi_wr : in std_logic;
     midi_key : in std_logic_vector(7 downto 0);
@@ -45,6 +47,8 @@ begin
       end if;
     end if;
   end process;
+
+  tap_key <= reg_midi_key;
 
   -- Special registers
   process (read1_addr_i, read2_addr_i, instr_i, sc_i, reg_midi_key, reg_midi_vel)
