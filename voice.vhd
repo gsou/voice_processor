@@ -90,4 +90,28 @@ package voice is
           dac_o : out std_logic);
   end component;
 
+  -- Special Register Bank
+  component voice_special is
+    port (
+      clk_i : in std_logic;
+      rst_i : in std_logic;
+
+      -- Passthrough
+      instr_i : in std_logic_vector(23 downto 0);
+      sc_i : in std_logic_vector(23 downto 0);
+
+      -- Write port (for midi)
+      midi_wr : in std_logic;
+      midi_key : in std_logic_vector(7 downto 0);
+      midi_vel : in std_logic_vector(6 downto 0);
+
+      -- Read port A
+      read1_addr_i : in std_logic_vector(3 downto 0);
+      read1_data_o : out std_logic_vector(23 downto 0);
+
+      -- Read port B
+      read2_addr_i : in std_logic_vector(3 downto 0);
+      read2_data_o : out std_logic_vector(23 downto 0));
+  end component;
+
 end voice;

@@ -6,7 +6,8 @@ use work.voice.all;
 
 entity voice_controller is
   generic (NUMREGS : natural := 16;
-           VOICES : natural := 1);
+           VOICES : natural := 1;
+           );
   port (
     rst_i : in std_logic;
     clk_i : in std_logic;
@@ -30,7 +31,7 @@ end entity;
 
 architecture rtl of voice_controller is
 
-  type state_t is (STDBY, MIDICMD, STARTVOICE, WAITVOICE, MIXSAMPLE, NEXTVOICE, PUSH);
+  type state_t is (STDBY, STARTVOICE, WAITVOICE, MIXSAMPLE, NEXTVOICE, PUSH);
   signal state : state_t := STDBY;
 
   signal read1 : integer range 0 to NUMREGS - 1;
@@ -60,7 +61,7 @@ architecture rtl of voice_controller is
 
   signal sample_counter : std_logic_vector(23 downto 0);
 
-  signal program_counter : std_logic_vector(3 downto 0);
+  signal program_counter : std_logic_vector(4 downto 0);
 
   signal last_sample : std_logic;
 
@@ -69,13 +70,11 @@ architecture rtl of voice_controller is
   signal midi_vel_f : std_logic_vector(6 downto 0);
   signal midi_rel_f : std_logic;
   signal midi_ev_f : std_logic;
-  signal reg_midi_key : std_logic_vector(7 downto 0);
-  signal reg_midi_vel : std_logic_vector(6 downto 0);
-
+  signal midi_key_comb_f : std_logic_vector(7 downto 0);
 begin
 
   instr <= i_data_i;
-  i_addr_o <= '0' & program_counter;
+  i_addr_o <= program_counter;
 
   process (clk_i)
   begin
@@ -87,6 +86,7 @@ begin
       midi_ev_f <= midi_ev_i;
     end if;
   end process;
+  midi_key_comb_f <= midi_rel_f & midi_key_f;
 
   -- Main statemachine
   process (rst_i, clk_i)
@@ -95,8 +95,7 @@ begin
       state <= STDBY;
     elsif rising_edge(clk_i) then
       case state is
-        when STDBY      => if midi_ev_i = '1' and midi_ev_f = '0' then state <= MIDICMD; elsif sample_i = '1' and last_sample = '0' then state <= STARTVOICE; end if;
-        when MIDICMD    => state <= STDBY;
+        when STDBY      => if sample_i = '1' and last_sample = '0' then state <= STARTVOICE; end if;
         when STARTVOICE => state <= WAITVOICE;
         when WAITVOICE  => if done = '1' then state <= MIXSAMPLE; end if;
         when MIXSAMPLE  => if ctrl_bank = VOICES - 1 then state <= PUSH; else state <= NEXTVOICE; end if;
@@ -118,12 +117,9 @@ begin
       sample_counter <= (others => '0');
       program_counter <= (others => '0');
       busy_o <= '0';
-      reg_midi_key <= x"45"; -- TODO Real value (others => '0');
-      reg_midi_vel <= (others => '0');
     elsif rising_edge(clk_i) then
       case state is
         when STDBY      => busy_o <= '0'; start_proc <= '0'; ctrl_bank <= 0;
-        when MIDICMD    => busy_o <= '1'; start_proc <= '0'; reg_midi_key <= midi_rel_f & midi_key_f; reg_midi_vel <= midi_vel_f; if midi_rel_f = '0' then sample_counter <= (others => '0'); end if;
         when STARTVOICE => busy_o <= '1'; start_proc <= '1'; program_counter <= (others => '0');
         when WAITVOICE  => busy_o <= '1'; start_proc <= '0'; if inc_pc = '1' then program_counter <= std_logic_vector(unsigned(program_counter) + 1); end if;
         when MIXSAMPLE  => busy_o <= '1'; start_proc <= '0'; -- TODO Add together voices
@@ -138,41 +134,10 @@ begin
   data_read2_imm <= data_read2_sp when ctrl_read2(4) = '1' else data_read2;
 
   -- Special registers
-  process (ctrl_read1, ctrl_read2, instr, sample_counter, reg_midi_key, reg_midi_vel)
-  begin
-    case ctrl_read1(3 downto 0) is
-      when x"0" => data_read1_sp <= instr;
-      when x"1" => data_read1_sp <= sample_counter;
-      when x"2" => data_read1_sp <= x"0000" & reg_midi_key;
-      when x"3" => data_read1_sp <= x"0000" & '0' & reg_midi_vel;
-      when x"7" => data_read1_sp <= x"00000C";
-      when x"8" => data_read1_sp <= x"000000";
-      when x"9" => data_read1_sp <= x"000001";
-      when x"A" => data_read1_sp <= x"000002";
-      when x"B" => data_read1_sp <= x"000003";
-      when x"C" => data_read1_sp <= x"000004";
-      when x"D" => data_read1_sp <= x"000005";
-      when x"E" => data_read1_sp <= x"000006";
-      when x"F" => data_read1_sp <= x"000007";
-      when others => data_read1_sp <= x"000000";
-    end case;
-    case ctrl_read2(3 downto 0) is
-      when x"0" => data_read2_sp <= instr;
-      when x"1" => data_read2_sp <= sample_counter;
-      when x"2" => data_read2_sp <= x"0000" & reg_midi_key;
-      when x"3" => data_read2_sp <= x"0000" & '0' & reg_midi_vel;
-      when x"7" => data_read2_sp <= x"00000C";
-      when x"8" => data_read2_sp <= x"000000";
-      when x"9" => data_read2_sp <= x"000001";
-      when x"A" => data_read2_sp <= x"000002";
-      when x"B" => data_read2_sp <= x"000003";
-      when x"C" => data_read2_sp <= x"000004";
-      when x"D" => data_read2_sp <= x"000005";
-      when x"E" => data_read2_sp <= x"000006";
-      when x"F" => data_read2_sp <= x"000007";
-      when others => data_read2_sp <= x"000000";
-    end case;
-  end process;
+  special_regs : voice_special port map (rst_i => rst_i, clk_i => clk_i, instr_i => instr, sc_i => sample_counter,
+                                         midi_wr => midi_ev_f, midi_key => midi_key_comb_f, midi_vel => midi_vel_f,
+                                         read1_addr_i => ctrl_read1(3 downto 0), read2_addr_i => ctrl_read2(3 downto 0),
+                                         read1_data_o => data_read1_sp, read2_data_o => data_read2_sp);
 
   ctrl_read1_bank <= to_integer(unsigned(ctrl_read1(3 downto 0)));
   ctrl_read2_bank <= to_integer(unsigned(ctrl_read2(3 downto 0)));
