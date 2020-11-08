@@ -8,7 +8,7 @@ entity voice_controller is
   generic (NUMREGS : natural := 16;
            VOICES : natural := 1; -- Serial voices, allows different sounds
                                   -- (different instructions)
-           POLY : natural := 4    -- Polyphony, computer in parallel (must use
+           POLY : natural := 8    -- Polyphony, computer in parallel (must use
                                   -- same instructions)
            );
   port (

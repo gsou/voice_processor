@@ -24,6 +24,7 @@ architecture rtl of voice_data is
   signal env_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
   signal lp_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
   signal add_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
+  signal sub_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
   signal mul_out : std_logic_vector(2*WIDTH_REGS - 1 downto 0);
   signal mov_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
   signal midi_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
@@ -32,7 +33,7 @@ architecture rtl of voice_data is
 begin
 
   -- Output muxing
-  process (ctrl_mux_i, osc_out, env_out, lp_out, add_out, mul_out, mov_out, midi_out, shr_out)
+  process (ctrl_mux_i, osc_out, env_out, lp_out, add_out, mul_out, mov_out, midi_out, shr_out, sub_out)
   begin
     case ctrl_mux_i is
       when "0000" => data_out_o <= osc_out;
@@ -43,6 +44,7 @@ begin
       when "0101" => data_out_o <= mov_out;
       when "0110" => data_out_o <= midi_out;
       when "0111" => data_out_o <= std_logic_vector(shr_out);
+      when "1000" => data_out_o <= sub_out;
       when others => data_out_o <= (others => '0');
     end case;
   end process;
@@ -78,6 +80,7 @@ begin
 
   -- Combinatorial adder
   add_out <= std_logic_vector(unsigned(data_in1_i) + unsigned(data_in2_i));
+  sub_out <= std_logic_vector(unsigned(data_in1_i) - unsigned(data_in2_i));
 
   -- Combinatorial multiplier, should be inferred as a hardware multiplier block
   -- TODO Its broken
