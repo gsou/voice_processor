@@ -4,6 +4,9 @@ use IEEE.numeric_std.ALL;
 
 package voice is
 
+  type midi_key_t is array (natural range <>) of std_logic_vector(7 downto 0);
+  type midi_vel_t is array (natural range <>) of std_logic_vector(6 downto 0);
+
   component voice_controller is
     generic (NUMREGS : natural := 16;
              VOICES : natural := 1);
@@ -93,27 +96,45 @@ package voice is
   -- Special Register Bank
   component voice_special is
     port (
-      clk_i : in std_logic;
+    clk_i : in std_logic;
+    rst_i : in std_logic;
+
+    -- Passthrough
+    instr_i : in std_logic_vector(23 downto 0);
+    sc_i : in std_logic_vector(23 downto 0);
+    -- Write port (for midi)
+    midi_key : in std_logic_vector(7 downto 0);
+    midi_vel : in std_logic_vector(6 downto 0);
+    midi_mod : in std_logic_vector(6 downto 0);
+
+    -- Read port A
+    read1_addr_i : in std_logic_vector(3 downto 0);
+    read1_data_o : out std_logic_vector(23 downto 0);
+
+    -- Read port B
+    read2_addr_i : in std_logic_vector(3 downto 0);
+    read2_data_o : out std_logic_vector(23 downto 0));
+  end component;
+
+  component voice_midi is
+    generic (VOICES : natural := 1; POLY : natural := 8); -- Polyphony of the midi controller
+    port (
       rst_i : in std_logic;
+      clk_i : in std_logic;
 
-      -- Passthrough
-      instr_i : in std_logic_vector(23 downto 0);
-      sc_i : in std_logic_vector(23 downto 0);
+      -- Serial data input
+      data_i : in std_logic_vector(7 downto 0);
+      ready_i : in std_logic;
 
-      tap_key : out std_logic_vector(7 downto 0);
+      -- TODO Note disable from controller, for now its just on release
+      -- TODO Allow sample counter to be used for enveloppes by reseting it on
+      -- new notes
 
-      -- Write port (for midi)
-      midi_wr : in std_logic;
-      midi_key : in std_logic_vector(7 downto 0);
-      midi_vel : in std_logic_vector(6 downto 0);
-
-      -- Read port A
-      read1_addr_i : in std_logic_vector(3 downto 0);
-      read1_data_o : out std_logic_vector(23 downto 0);
-
-      -- Read port B
-      read2_addr_i : in std_logic_vector(3 downto 0);
-      read2_data_o : out std_logic_vector(23 downto 0));
+      -- Polyphony midi status
+      midi_bank_i : in integer range 0 to VOICES - 1; -- Voice selector
+      midi_key_o : out midi_key_t(POLY-1 downto 0);
+      midi_vel_o : out midi_vel_t(POLY-1 downto 0);
+      midi_modwheel_o : out std_logic_vector(6 downto 0));
   end component;
 
 end voice;

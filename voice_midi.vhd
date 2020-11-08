@@ -1,0 +1,142 @@
+library IEEE;
+use IEEE.std_logic_1164.ALL;
+
+use work.voice.ALL;
+
+entity voice_midi is
+  generic (VOICES : natural := 1; POLY : natural := 8); -- Polyphony of the midi controller
+  port (
+    rst_i : in std_logic;
+    clk_i : in std_logic;
+
+    -- Serial data input
+    data_i : in std_logic_vector(7 downto 0);
+    ready_i : in std_logic;
+
+    -- TODO Note disable from controller, for now its just on release
+    -- TODO Allow sample counter to be used for enveloppes by reseting it on
+    -- new notes
+
+    -- Polyphony midi status
+    midi_bank_i : in integer range 0 to VOICES - 1; -- Voice selector
+    midi_key_o : out midi_key_t(POLY-1 downto 0);
+    midi_vel_o : out midi_vel_t(POLY-1 downto 0);
+    midi_modwheel_o : out std_logic_vector(6 downto 0));
+end entity;
+
+architecture rtl of voice_midi is
+
+  type channel_midi_key is array(VOICES - 1 downto 0) of midi_key_t(POLY-1 downto 0);
+  type channel_midi_vel is array(VOICES - 1 downto 0) of midi_vel_t(POLY-1 downto 0);
+  signal reg_midi_key : channel_midi_key;
+  signal reg_midi_vel : channel_midi_vel;
+
+  -- Midi decoder state machine
+  type state_t is (CMD, VAL1, VAL2, EXEC);
+  signal state : state_t;
+
+  -- Midi command
+  signal midi_command : std_logic_vector(7 downto 0);
+  signal midi_value1 : std_logic_vector(7 downto 0);
+  signal midi_value2 : std_logic_vector(7 downto 0);
+
+  -- Algorithm to alloc next key. TODO Make it more usable (consider release)
+  function which_to_alloc(signal taps : midi_key_t(POLY-1 downto 0)) return integer is
+  begin
+    for i in taps'low to taps'high loop
+      if taps(i)(7) = '0' then
+        return i;
+      end if;
+    end loop;
+    return 0;
+  end function;
+  -- This patches the fact that my keyboard controller spams the keyon function
+  function allow_to_alloc(signal taps : midi_key_t(POLY-1 downto 0); signal key : std_logic_vector(6 downto 0)) return boolean is
+  begin
+    for i in taps'low to taps'high loop
+      if taps(i)(6 downto 0) = key and taps(i)(7) = '1' then
+        return false;
+      end if;
+    end loop;
+    return true;
+  end function;
+
+
+begin
+
+  -- HACK Testing wether data works
+  midi_key_o <= reg_midi_key(midi_bank_i);
+  -- midi_key_o(0) <= x"C5";
+  -- oth: for i in 1 to POLY-1 generate
+  --   midi_key_o(i) <= x"00";
+  -- end generate;
+
+  midi_vel_o <= reg_midi_vel(midi_bank_i);
+
+  -- State machine
+  process (rst_i, clk_i)
+  begin
+    if rst_i = '1' then
+      state <= CMD;
+    elsif rising_edge(clk_i) then
+      case state is
+        when CMD  => if ready_i = '1' and data_i(7) = '1' then state <= VAL1; end if;
+        when VAL1 => if ready_i = '1' then state <= VAL2; end if;
+        when VAL2 => if ready_i = '1' then state <= EXEC; end if;
+        when EXEC => state <= CMD;
+      end case;
+    end if;
+  end process;
+  -- Data loading and command execution
+  process (rst_i, clk_i)
+  begin
+    if rst_i = '1' then
+      midi_command <= (others => '0');
+      midi_value1 <= (others => '0');
+      midi_value2 <= (others => '0');
+      midi_modwheel_o <= (others => '0');
+      for j in 0 to VOICES-1 loop
+        for i in 0 to POLY - 1 loop
+          reg_midi_key(j)(i) <= (others => '0');
+          reg_midi_vel(j)(i) <= (others => '0');
+        end loop;
+      end loop;
+    elsif rising_edge(clk_i) then
+      case state is
+        when CMD => midi_command <= data_i;
+        when VAL1 => midi_value1 <= data_i;
+        when VAL2 => midi_value2 <= data_i;
+        when EXEC =>
+          if midi_command(7 downto 4) = "1001" then
+            -- Note ON
+            if allow_to_alloc(reg_midi_key(0), midi_value1(6 downto 0)) then
+              -- TODO Alloc on other voices as configured
+              reg_midi_key(0)(which_to_alloc(reg_midi_key(0))) <= midi_command(4) & midi_value1(6 downto 0);
+              -- reg_midi_vel(0)(which_to_alloc(reg_midi_key(0))) <= midi_value2(6 downto 0);
+            end if;
+          elsif midi_command(7 downto 4) = "1000" then
+            -- Note OFF
+            for j in 0 to VOICES-1 loop
+              for i in 0 to POLY - 1 loop
+                if midi_value1(6 downto 0) = reg_midi_key(j)(i)(6 downto 0) then
+                  reg_midi_key(j)(i) <= midi_command(4) & midi_value1(6 downto 0);
+                  reg_midi_vel(j)(i) <= midi_value2(6 downto 0);
+                end if;
+              end loop;
+            end loop;
+          elsif midi_command(7 downto 4) = "1011" then
+            -- Controller, only modwheel is supported
+            if midi_value1 = "0000001" then
+              midi_modwheel_o <= midi_value2(6 downto 0);
+            end if;
+          end if;
+        when others =>
+          midi_command <= (others => '0');
+          midi_value1 <= (others => '0');
+          midi_value2 <= (others => '0');
+          midi_modwheel_o <= (others => '0');
+      end case;
+    end if;
+  end process;
+
+end rtl;

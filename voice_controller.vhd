@@ -8,7 +8,7 @@ entity voice_controller is
   generic (NUMREGS : natural := 16;
            VOICES : natural := 1; -- Serial voices, allows different sounds
                                   -- (different instructions)
-           POLY : natural := 8    -- Polyphony, computer in parallel (must use
+           POLY : natural := 4    -- Polyphony, computer in parallel (must use
                                   -- same instructions)
            );
   port (
@@ -20,11 +20,9 @@ entity voice_controller is
     i_addr_o : out std_logic_vector(4 downto 0);
     i_data_i : in std_logic_vector(23 downto 0);
 
-    -- Accept Midi commands
-    midi_ev_i : in std_logic;
-    midi_rel_i : in std_logic;
-    midi_key_i : in std_logic_vector(6 downto 0);
-    midi_vel_i : in std_logic_vector(6 downto 0);
+    -- Accept Midi commands (serial)
+    midi_data_i : in std_logic_vector(7 downto 0);
+    midi_rdy_i : in std_logic;
 
     busy_o : out std_logic;
 
@@ -57,42 +55,17 @@ architecture rtl of voice_controller is
   signal program_counter : std_logic_vector(4 downto 0);
   signal last_sample : std_logic;
 
-  -- Midi commands and registers
-  -- TODO Proper midi controller
-  signal midi_key_f : std_logic_vector(6 downto 0);
-  signal midi_vel_f : std_logic_vector(6 downto 0);
-  signal midi_rel_f : std_logic;
-  signal midi_ev_f : std_logic;
-  signal midi_key_comb_f : std_logic_vector(7 downto 0);
-
   -- Parallel voices arrays
-
   type midi_write_t is array (POLY-1 downto 0) of std_logic;
   signal midi_write : midi_write_t;
 
   type midi_tap_key_t is array (POLY-1 downto 0) of std_logic_vector(7 downto 0);
   signal midi_tap_key : midi_tap_key_t;
-  -- Algorithm to alloc next key. TODO Make it more usable (consider release)
-  function which_to_alloc(signal taps : midi_tap_key_t) return integer is
-  begin
-    for i in taps'low to taps'high loop
-      if taps(i)(7) = '0' then
-        return i;
-      end if;
-    end loop;
-    return 0;
-  end function;
-  -- This patches the fact that my keyboard controller spams the keyon function
-  function allow_to_alloc(signal taps : midi_tap_key_t; signal key : std_logic_vector(6 downto 0)) return boolean is
-  begin
-    for i in taps'low to taps'high loop
-      if taps(i)(6 downto 0) = key and taps(i)(7) = '1' then
-        return false;
-      end if;
-    end loop;
-    return true;
-  end function;
 
+  -- Controller to special registers
+  signal midi_key : midi_key_t(POLY-1 downto 0);
+  signal midi_vel : midi_vel_t(POLY-1 downto 0);
+  signal midi_mod : std_logic_vector(6 downto 0);
 
   type data_poly_t is array (POLY-1 downto 0) of std_logic_vector(23 downto 0);
   signal data_sample : data_poly_t;
@@ -124,45 +97,14 @@ begin
   begin
     if rising_edge(clk_i) then
       last_sample <= sample_i;
-      midi_key_f <= midi_key_i;
-      midi_vel_f <= midi_vel_i;
-      midi_rel_f <= midi_rel_i;
-      midi_ev_f <= midi_ev_i;
     end if;
   end process;
-  midi_key_comb_f <= midi_rel_f & midi_key_f;
+
 
   -- Midi controller
-  process (rst_i, clk_i)
-  begin
-    if rst_i = '1' then
-      for i in 0 to POLY-1 loop
-        midi_write(i) <= '0';
-      end loop;
-    elsif rising_edge(clk_i) then
-      for i in 0 to POLY-1 loop
-        midi_write(i) <= '0';
-      end loop;
-      if midi_ev_i = '1' and midi_ev_f = '0' then
-        if midi_rel_i = '0' then
-          -- Clear voices that are using same key
-          for i in 0 to POLY-1 loop
-            if midi_tap_key(i)(6 downto 0) = midi_key_i(6 downto 0) then
-              midi_write(i) <= '1';
-            else
-              midi_write(i) <= '0';
-            end if;
-          end loop;
-        else
-          -- This is a new key, we must find an unused voice
-          if allow_to_alloc(midi_tap_key, midi_key_i) then
-            midi_write( which_to_alloc(midi_tap_key) ) <= '1';
-          end if;
-        end if;
-      end if;
-    end if;
-  end process;
-
+  midi_ctrl : voice_midi generic map( VOICES => VOICES, POLY => POLY )
+    port map (rst_i => rst_i, clk_i => clk_i, data_i => midi_data_i, ready_i => midi_rdy_i,
+              midi_bank_i => ctrl_bank, midi_key_o => midi_key, midi_vel_o => midi_vel, midi_modwheel_o => midi_mod);
 
   -- Main statemachine
   process (rst_i, clk_i)
@@ -183,7 +125,6 @@ begin
   end process;
 
   -- Statemachine Data
-  -- Registers on ctrl_bank, sample_counter and sample_o here
   process (rst_i, clk_i)
   begin
     if rst_i = '1' then
@@ -198,7 +139,8 @@ begin
         when STDBY      => busy_o <= '0'; start_proc <= '0'; ctrl_bank <= 0;
         when STARTVOICE => busy_o <= '1'; start_proc <= '1'; program_counter <= (others => '0');
         when WAITVOICE  => busy_o <= '1'; start_proc <= '0'; if inc_pc = '1' then program_counter <= std_logic_vector(unsigned(program_counter) + 1); end if;
-        when MIXSAMPLE  => busy_o <= '1'; start_proc <= '0'; -- TODO Add together voices
+        when MIXSAMPLE  => busy_o <= '1'; start_proc <= '0'; -- TODO Add together
+                                                             -- serial voices
         when NEXTVOICE  => busy_o <= '1'; start_proc <= '0'; program_counter <= (others => '0'); -- ctrl_bank <= ctrl_bank + 1
         when PUSH       => busy_o <= '1'; start_proc <= '0';
                            -- TODO Proper sample mix (With saturation)
@@ -215,7 +157,7 @@ begin
     data_read2_imm(i) <= data_read2_sp(i) when ctrl_read2(4) = '1' else data_read2(i);
     -- Special registers
     special_regs : voice_special port map (rst_i => rst_i, clk_i => clk_i, instr_i => instr, sc_i => sample_counter,
-                                           midi_wr => midi_write(i), midi_key => midi_key_comb_f, midi_vel => midi_vel_f, tap_key => midi_tap_key(i),
+                                           midi_key => midi_key(i), midi_vel => midi_vel(i), midi_mod => midi_mod,
                                            read1_addr_i => ctrl_read1(3 downto 0), read2_addr_i => ctrl_read2(3 downto 0),
                                            read1_data_o => data_read1_sp(i), read2_data_o => data_read2_sp(i));
 
