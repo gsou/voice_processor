@@ -21,11 +21,9 @@ begin
   sample(SAMPLE_WIDTH - 1) <= not sample_i(SAMPLE_WIDTH - 1);
   sample(SAMPLE_WIDTH - 2 downto 0) <= sample_i(SAMPLE_WIDTH - 2 downto 0);
 
-  process (rst_i, clk_i)
+  process (clk_i)
   begin
-    if rst_i = '1' then
-      acc <= (others => '0');
-    elsif rising_edge(clk_i) then
+    if rising_edge(clk_i) then
       acc <= std_logic_vector(unsigned('0' & acc(SAMPLE_WIDTH - 1 downto 0)) + unsigned('0' & sample));
     end if;
   end process;
