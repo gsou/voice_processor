@@ -41,22 +41,26 @@ architecture rtl of voice_midi is
   signal midi_value2 : std_logic_vector(7 downto 0);
 
   -- Algorithm to alloc next key. TODO Make it more usable (consider release)
-  function which_to_alloc(signal taps : midi_key_t(POLY-1 downto 0)) return integer is
+  function which_to_alloc(signal taps : channel_midi_key) return integer is
   begin
-    for i in taps'low to taps'high loop
-      if taps(i)(7) = '0' then
-        return i;
+    for j in 0 to VOICES - 1 loop
+    for i in 0 to POLY-1 loop
+      if taps(j)(i)(7) = '0' then
+        return j * POLY + i;
       end if;
+    end loop;
     end loop;
     return 0;
   end function;
   -- This patches the fact that my keyboard controller spams the keyon function
-  function allow_to_alloc(signal taps : midi_key_t(POLY-1 downto 0); signal key : std_logic_vector(6 downto 0)) return boolean is
+  function allow_to_alloc(signal taps : channel_midi_key; signal key : std_logic_vector(6 downto 0)) return boolean is
   begin
-    for i in taps'low to taps'high loop
-      if taps(i)(6 downto 0) = key and taps(i)(7) = '1' then
+    for j in 0 to VOICES - 1 loop
+    for i in 0 to POLY - 1 loop
+      if taps(j)(i)(6 downto 0) = key and taps(j)(i)(7) = '1' then
         return false;
       end if;
+    end loop;
     end loop;
     return true;
   end function;
@@ -64,13 +68,7 @@ architecture rtl of voice_midi is
 
 begin
 
-  -- HACK Testing wether data works
   midi_key_o <= reg_midi_key(midi_bank_i);
-  -- midi_key_o(0) <= x"C5";
-  -- oth: for i in 1 to POLY-1 generate
-  --   midi_key_o(i) <= x"00";
-  -- end generate;
-
   midi_vel_o <= reg_midi_vel(midi_bank_i);
 
   -- State machine
@@ -89,6 +87,7 @@ begin
   end process;
   -- Data loading and command execution
   process (rst_i, clk_i)
+    variable channel_sel : integer range 0 to POLY * VOICES - 1;
   begin
     if rst_i = '1' then
       midi_command <= (others => '0');
@@ -109,10 +108,11 @@ begin
         when EXEC =>
           if midi_command(7 downto 4) = "1001" then
             -- Note ON
-            if allow_to_alloc(reg_midi_key(0), midi_value1(6 downto 0)) then
-              -- TODO Alloc on other voices as configured
-              reg_midi_key(0)(which_to_alloc(reg_midi_key(0))) <= midi_command(4) & midi_value1(6 downto 0);
-              -- reg_midi_vel(0)(which_to_alloc(reg_midi_key(0))) <= midi_value2(6 downto 0);
+            -- TODO Allow to use multiples voices for one note
+            if allow_to_alloc(reg_midi_key, midi_value1(6 downto 0)) then
+              channel_sel := which_to_alloc(reg_midi_key);
+              reg_midi_key(channel_sel / POLY)(channel_sel rem POLY) <= midi_command(4) & midi_value1(6 downto 0);
+              reg_midi_vel(channel_sel / POLY)(channel_sel rem POLY) <= midi_value2(6 downto 0);
             end if;
           elsif midi_command(7 downto 4) = "1000" then
             -- Note OFF

@@ -6,7 +6,7 @@ use work.voice.all;
 
 entity voice_controller is
   generic (NUMREGS : natural := 16;
-           VOICES : natural := 1; -- Serial voices, allows different sounds
+           VOICES : natural := 2; -- Serial voices, allows different sounds
                                   -- (different instructions)
            POLY : natural := 8    -- Polyphony, computer in parallel (must use
                                   -- same instructions)
@@ -77,7 +77,12 @@ architecture rtl of voice_controller is
   signal data_read2_imm : data_poly_t;
   signal data_read2_sp : data_poly_t;
 
+  signal sample_mix : std_logic_vector(23 downto 0);
+
+  signal sample_acc : std_logic_vector(23 downto 0);
+
   -- Mixing the parallel voices together
+  -- TODO Make better mixer
   function mix_samples(signal samples : data_poly_t) return std_logic_vector is
     variable acc : std_logic_vector(23 downto 0) := (others => '0');
   begin
@@ -124,6 +129,8 @@ begin
     end if;
   end process;
 
+  sample_mix <= mix_samples(data_sample);
+
   -- Statemachine Data
   process (rst_i, clk_i)
   begin
@@ -134,17 +141,17 @@ begin
       sample_counter <= (others => '0');
       program_counter <= (others => '0');
       busy_o <= '0';
+      sample_acc <= (others => '0');
     elsif rising_edge(clk_i) then
       case state is
-        when STDBY      => busy_o <= '0'; start_proc <= '0'; ctrl_bank <= 0;
+        when STDBY      => busy_o <= '0'; start_proc <= '0'; ctrl_bank <= 0; sample_acc <= (others => '0');
         when STARTVOICE => busy_o <= '1'; start_proc <= '1'; program_counter <= (others => '0');
         when WAITVOICE  => busy_o <= '1'; start_proc <= '0'; if inc_pc = '1' then program_counter <= std_logic_vector(unsigned(program_counter) + 1); end if;
-        when MIXSAMPLE  => busy_o <= '1'; start_proc <= '0'; -- TODO Add together
-                                                             -- serial voices
-        when NEXTVOICE  => busy_o <= '1'; start_proc <= '0'; program_counter <= (others => '0'); -- ctrl_bank <= ctrl_bank + 1
+        when MIXSAMPLE  => busy_o <= '1'; start_proc <= '0'; sample_acc <= std_logic_vector(unsigned(sample_acc) + unsigned(sample_mix));
+        when NEXTVOICE  => busy_o <= '1'; start_proc <= '0'; program_counter <= (others => '0'); ctrl_bank <= ctrl_bank + 1 mod VOICES;
         when PUSH       => busy_o <= '1'; start_proc <= '0';
                            -- TODO Proper sample mix (With saturation)
-                           sample_o <= mix_samples(data_sample);
+                           sample_o <= sample_acc;
                            sample_counter <= std_logic_vector(unsigned(sample_counter) + 1);
         when others     => busy_o <= '1'; start_proc <= '0'; ctrl_bank <= 0; sample_o <= (others => '0'); program_counter <= (others => '0');
       end case;
