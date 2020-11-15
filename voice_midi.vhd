@@ -21,7 +21,11 @@ entity voice_midi is
     midi_bank_i : in integer range 0 to VOICES - 1; -- Voice selector
     midi_key_o : out midi_key_t(POLY-1 downto 0);
     midi_vel_o : out midi_vel_t(POLY-1 downto 0);
-    midi_modwheel_o : out std_logic_vector(6 downto 0));
+    midi_modwheel_o : out std_logic_vector(6 downto 0);
+
+    -- Note Set and Reset controller
+    note_set_o : out note_bitfield_t(VOICES-1 downto 0, POLY-1 downto 0));
+    -- TODO Reset
 end entity;
 
 architecture rtl of voice_midi is
@@ -101,6 +105,11 @@ begin
         end loop;
       end loop;
     elsif rising_edge(clk_i) then
+      for j in 0 to VOICES-1 loop
+        for i in 0 to POLY - 1 loop
+          note_set_o(j, i) <= '0';
+        end loop;
+      end loop;
       case state is
         when CMD => midi_command <= data_i;
         when VAL1 => midi_value1 <= data_i;
@@ -113,6 +122,7 @@ begin
               channel_sel := which_to_alloc(reg_midi_key);
               reg_midi_key(channel_sel / POLY)(channel_sel rem POLY) <= midi_command(4) & midi_value1(6 downto 0);
               reg_midi_vel(channel_sel / POLY)(channel_sel rem POLY) <= midi_value2(6 downto 0);
+              note_set_o(channel_sel / POLY, channel_sel rem POLY) <= '1';
             end if;
           elsif midi_command(7 downto 4) = "1000" then
             -- Note OFF
@@ -126,7 +136,7 @@ begin
             end loop;
           elsif midi_command(7 downto 4) = "1011" then
             -- Controller, only modwheel is supported
-            if midi_value1 = "0000001" then
+            if midi_value1 = "00000001" then
               midi_modwheel_o <= midi_value2(6 downto 0);
             end if;
           end if;

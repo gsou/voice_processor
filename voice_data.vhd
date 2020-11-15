@@ -25,26 +25,31 @@ architecture rtl of voice_data is
   signal lp_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
   signal add_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
   signal sub_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
-  signal mul_out : std_logic_vector(2*WIDTH_REGS - 1 downto 0);
+  signal mul_out : std_logic_vector(2*WIDTH_REGS downto 0);
   signal mov_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
   signal midi_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
   signal shr_out : signed(WIDTH_REGS - 1 downto 0);
+  signal shl_out : unsigned(WIDTH_REGS - 1 downto 0);
+
+  signal sine_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
 
 begin
 
   -- Output muxing
-  process (ctrl_mux_i, osc_out, env_out, lp_out, add_out, mul_out, mov_out, midi_out, shr_out, sub_out)
+  process (ctrl_mux_i, osc_out, env_out, lp_out, add_out, mul_out, mov_out, midi_out, shr_out, sub_out, shl_out)
   begin
     case ctrl_mux_i is
       when "0000" => data_out_o <= osc_out;
       when "0001" => data_out_o <= env_out;
       when "0010" => data_out_o <= lp_out;
       when "0011" => data_out_o <= add_out;
-      when "0100" => data_out_o <= mul_out(2*WIDTH_REGS - 1 downto WIDTH_REGS);
+      when "0100" => data_out_o <= mul_out(2*WIDTH_REGS -1 downto WIDTH_REGS);
       when "0101" => data_out_o <= mov_out;
       when "0110" => data_out_o <= midi_out;
       when "0111" => data_out_o <= std_logic_vector(shr_out);
       when "1000" => data_out_o <= sub_out;
+      when "1001" => data_out_o <= std_logic_vector(shl_out);
+      when "1100" => data_out_o <= mul_out(WIDTH_REGS - 1 downto 0);
       when others => data_out_o <= (others => '0');
     end case;
   end process;
@@ -54,8 +59,7 @@ begin
   process (osc_type)
   begin
     case osc_type is
-                     -- TODO Sine
-      when "00"   => osc_out <= (others => '0');
+      when "00"   => osc_out <= sine_out;
                      -- Square
       when "01"   => osc_out(WIDTH_REGS - 1) <= data_in1_i(WIDTH_REGS-1);
                      osc_out(WIDTH_REGS - 2 downto 0) <= (others => not data_in1_i(WIDTH_REGS-1));
@@ -83,15 +87,18 @@ begin
   sub_out <= std_logic_vector(unsigned(data_in1_i) - unsigned(data_in2_i));
 
   -- Combinatorial multiplier, should be inferred as a hardware multiplier block
-  -- TODO Its broken
-  mul_out <= std_logic_vector(unsigned(data_in1_i) * unsigned(data_in2_i));
+  mul_out <= std_logic_vector(signed(data_in1_i) * signed('0' & data_in2_i));
 
   -- Mov
   mov_out <= data_in1_i;
 
-  -- Shr
+  -- Shifts
   shr_out <= shift_right(signed(data_in1_i), to_integer(unsigned(data_in2_i)));
+  shl_out <= shift_left(unsigned(data_in1_i), to_integer(unsigned(data_in2_i)));
 
   -- Midi lookup
   midi : midi_lookup port map (midi_i => data_in1_i(6 downto 0), counter_i => unsigned(data_in2_i), freq_o => midi_out);
+
+  -- Sine lookup
+  sine : sine_lookup port map (counter_i => unsigned(data_in1_i(WIDTH_REGS - 1 downto WIDTH_REGS - 8)), freq_o => sine_out);
 end;

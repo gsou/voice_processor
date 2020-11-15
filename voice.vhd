@@ -4,6 +4,7 @@ use IEEE.numeric_std.ALL;
 
 package voice is
 
+  type note_bitfield_t is array (natural range <>, natural range <>) of std_logic;
   type midi_key_t is array (natural range <>) of std_logic_vector(7 downto 0);
   type midi_vel_t is array (natural range <>) of std_logic_vector(6 downto 0);
 
@@ -134,7 +135,18 @@ package voice is
       midi_bank_i : in integer range 0 to VOICES - 1; -- Voice selector
       midi_key_o : out midi_key_t(POLY-1 downto 0);
       midi_vel_o : out midi_vel_t(POLY-1 downto 0);
-      midi_modwheel_o : out std_logic_vector(6 downto 0));
+      midi_modwheel_o : out std_logic_vector(6 downto 0);
+
+      -- Note Set and Reset controller
+      note_set_o : out note_bitfield_t(VOICES-1 downto 0, POLY-1 downto 0));
   end component;
+
+  component sine_lookup is
+    port (
+      counter_i : in unsigned(7 downto 0);
+      freq_o : out std_logic_vector(23 downto 0)
+      );
+  end component;
+
 
 end voice;
