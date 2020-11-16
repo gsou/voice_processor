@@ -38,6 +38,7 @@ package voice is
       ctrl_read1_i : in integer range 0 to NUMREGS - 1;
       ctrl_read2_i : in integer range 0 to NUMREGS - 1;
       ctrl_write_i : in integer range 0 to NUMREGS - 1;
+      ctrl_write_en_i : in std_logic;
       -- Data ports
       data_write_i : in  std_logic_vector(WIDTH_REGS   - 1 downto 0);
       data_read1_o : out std_logic_vector(WIDTH_REGS   - 1 downto 0);
@@ -54,8 +55,8 @@ package voice is
       -- Data ports
       data_in1_i : in std_logic_vector(WIDTH_REGS - 1 downto 0);
       data_in2_i : in std_logic_vector(WIDTH_REGS - 1 downto 0);
-      data_out_o : out std_logic_vector(WIDTH_REGS - 1 downto 0));
-
+      data_out_o : out std_logic_vector(WIDTH_REGS - 1 downto 0);
+      flags_o : out std_logic_vector(1 downto 0));
   end component;
 
 
@@ -70,6 +71,7 @@ package voice is
       ctrl_read1_o : out std_logic_vector(4 downto 0);
       ctrl_read2_o : out std_logic_vector(4 downto 0);
       ctrl_write_o : out integer range 0 to NUMREGS - 1;
+      ctrl_exec_cond_o : out std_logic_vector(2 downto 0);
 
       ctrl_inc_pc_o : out std_logic;
       done_o : out std_logic;
@@ -148,5 +150,16 @@ package voice is
       );
   end component;
 
+  component voice_flags is
+    port (
+      clk_i : in std_logic;
+      rst_i : in std_logic;
+
+      exec_i : in std_logic_vector(2 downto 0);
+      flags_i : in std_logic_vector(1 downto 0);
+      enable_o : out std_logic
+
+      );
+  end component;
 
 end voice;

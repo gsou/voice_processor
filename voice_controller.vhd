@@ -43,6 +43,7 @@ architecture rtl of voice_controller is
   signal ctrl_read1 : std_logic_vector(4 downto 0);
   signal ctrl_read2 : std_logic_vector(4 downto 0);
   signal ctrl_write : integer range 0 to NUMREGS - 1;
+  signal ctrl_exec : std_logic_vector(2 downto 0);
   signal ctrl_mux   : std_logic_vector(3 downto 0);
 
   -- Master Statemachine IO (Serial voices)
@@ -76,6 +77,11 @@ architecture rtl of voice_controller is
   signal data_read2 : data_poly_t;
   signal data_read2_imm : data_poly_t;
   signal data_read2_sp : data_poly_t;
+
+  -- Manage execution
+  type exec_flags_t is array(POLY-1 downto 0) of std_logic_vector(1 downto 0);
+  signal reg_enable    : std_logic_vector(POLY - 1 downto 0);
+  signal reg_flags   : exec_flags_t;
 
   type sample_counter_t is array (VOICES-1 downto 0) of data_poly_t;
   signal sample_counter : sample_counter_t;
@@ -197,11 +203,13 @@ begin
     -- XXX Remove extra regs for serial?
     register_bank : voice_bank generic map (VOICES => VOICES, NUMREGS => 16, WIDTH_REGS => 24)
       port map (rst_i => rst_i, clk_i => clk_i, ctrl_bank_i => ctrl_bank, ctrl_read1_i => ctrl_read1_bank,
-                ctrl_read2_i => ctrl_read2_bank, ctrl_write_i => ctrl_write,
+                ctrl_read2_i => ctrl_read2_bank, ctrl_write_i => ctrl_write, ctrl_write_en_i => reg_enable(i),
                 data_write_i => data_write(i), data_read1_o => data_read1(i), data_read2_o => data_read2(i), data_sample_o => data_sample(i));
 
+    flags : voice_flags port map (clk_i => clk_i, rst_i => rst_i, exec_i => ctrl_exec, flags_i => reg_flags(i), enable_o => reg_enable(i));
+
     alu: voice_data generic map (WIDTH_REGS => 24)
-      port map (ctrl_mux_i => ctrl_mux, data_in1_i => data_read1_imm(i), data_in2_i => data_read2_imm(i), data_out_o => data_write(i));
+      port map (ctrl_mux_i => ctrl_mux, data_in1_i => data_read1_imm(i), data_in2_i => data_read2_imm(i), data_out_o => data_write(i), flags_o => reg_flags(i));
   end generate;
 
   ctrl_read1_bank <= to_integer(unsigned(ctrl_read1(3 downto 0)));
@@ -210,7 +218,7 @@ begin
   processor : voice_processor generic map (NUMREGS => NUMREGS)
     port map (rst_i => rst_i, clk_i => clk_i, ctrl_mux_o => ctrl_mux, ctrl_read1_o => ctrl_read1,
               ctrl_read2_o => ctrl_read2, ctrl_write_o => ctrl_write, ctrl_inc_pc_o => inc_pc,
-              done_o => done, start_i => start_proc, instr_i => instr);
+              ctrl_exec_cond_o => ctrl_exec, done_o => done, start_i => start_proc, instr_i => instr);
 
   -- TODO FX processor
 

@@ -12,11 +12,16 @@ entity voice_data is
     -- Data ports
     data_in1_i : in std_logic_vector(WIDTH_REGS - 1 downto 0);
     data_in2_i : in std_logic_vector(WIDTH_REGS - 1 downto 0);
-    data_out_o : out std_logic_vector(WIDTH_REGS - 1 downto 0));
+    data_out_o : out std_logic_vector(WIDTH_REGS - 1 downto 0);
+
+    -- Flags
+    flags_o : out std_logic_vector(1 downto 0));
 
 end entity;
 
 architecture rtl of voice_data is
+
+  signal data_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
 
   signal osc_type : std_logic_vector(1 downto 0);
 
@@ -36,23 +41,28 @@ architecture rtl of voice_data is
 begin
 
   -- Output muxing
+  data_out_o <= data_out;
   process (ctrl_mux_i, osc_out, env_out, lp_out, add_out, mul_out, mov_out, midi_out, shr_out, sub_out, shl_out)
   begin
     case ctrl_mux_i is
-      when "0000" => data_out_o <= osc_out;
-      when "0001" => data_out_o <= env_out;
-      when "0010" => data_out_o <= lp_out;
-      when "0011" => data_out_o <= add_out;
-      when "0100" => data_out_o <= mul_out(2*WIDTH_REGS -1 downto WIDTH_REGS);
-      when "0101" => data_out_o <= mov_out;
-      when "0110" => data_out_o <= midi_out;
-      when "0111" => data_out_o <= std_logic_vector(shr_out);
-      when "1000" => data_out_o <= sub_out;
-      when "1001" => data_out_o <= std_logic_vector(shl_out);
-      when "1100" => data_out_o <= mul_out(WIDTH_REGS - 1 downto 0);
-      when others => data_out_o <= (others => '0');
+      when "0000" => data_out <= osc_out;
+      when "0001" => data_out <= env_out;
+      when "0010" => data_out <= lp_out;
+      when "0011" => data_out <= add_out;
+      when "0100" => data_out <= mul_out(2*WIDTH_REGS -1 downto WIDTH_REGS);
+      when "0101" => data_out <= mov_out;
+      when "0110" => data_out <= midi_out;
+      when "0111" => data_out <= std_logic_vector(shr_out);
+      when "1000" => data_out <= sub_out;
+      when "1001" => data_out <= std_logic_vector(shl_out);
+      when "1100" => data_out <= mul_out(WIDTH_REGS - 1 downto 0);
+      when others => data_out <= (others => '0');
     end case;
   end process;
+
+  -- Flags
+  flags_o(0) <= '1' when unsigned(data_out) = 0 else '0';
+  flags_o(1) <= '1' when signed(data_out) > 0 else '0';
 
   -- Combinatorial Oscillator
   osc_type <= data_in2_i(1 downto 0);

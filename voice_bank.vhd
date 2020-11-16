@@ -15,6 +15,7 @@ entity voice_bank is
     ctrl_read1_i : in integer range 0 to NUMREGS - 1;
     ctrl_read2_i : in integer range 0 to NUMREGS - 1;
     ctrl_write_i : in integer range 0 to NUMREGS - 1;
+    ctrl_write_en_i : in std_logic;
     -- Data ports
     data_write_i : in  std_logic_vector(WIDTH_REGS   - 1 downto 0);
     data_read1_o : out std_logic_vector(WIDTH_REGS   - 1 downto 0);
@@ -46,7 +47,9 @@ begin
         end loop;
       end loop;
     elsif rising_edge(clk_i) then
-      regs(ctrl_bank_i, ctrl_write_i) <= data_write_i;
+      if ctrl_write_en_i = '1' then
+        regs(ctrl_bank_i, ctrl_write_i) <= data_write_i;
+      end if;
     end if;
   end process;
 

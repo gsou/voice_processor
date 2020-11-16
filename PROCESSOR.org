@@ -15,6 +15,7 @@ This document is for the 24bit voice processor.
 The 24bit instruction is made of
 
 - 3..0: The ALU Mux position
+  |---+----------------------------------------------------|
   | 0 | Oscillator (W <= OscillatorType[R2](R1))           |
   | 1 | TODO Enveloppe                                     |
   | 2 | TODO LP filter                                     |
@@ -27,8 +28,10 @@ The 24bit instruction is made of
   | 9 | Shr instruction (W <= R1 - R2)                     |
   | C | Mul instruction (Low part of mult) (W <= R1 * R2)  |
   |   | Others (W <= 0)                                    |
+  |---+----------------------------------------------------|
 - 7..4: Register 1 Selection
   In register mode, this is the register ID. In special mode, it is:
+  |---+------------------------------------------------------------|
   | 0 | Next Instruction                                           |
   | 1 | Sample counter since Note Down                             |
   | 2 | Midi Note Down (bit 7 is cleared if key has been released) |
@@ -45,12 +48,23 @@ The 24bit instruction is made of
   | D | Constant 5                                                 |
   | E | Constant 6                                                 |
   | F | Constant 7                                                 |
-
+  |---+------------------------------------------------------------|
 - 11..8: Register 2 Selection
 - 15..12: Write register selection
 - 16: Register 1 special mode
 - 17: Register 2 special mode
-- 21..18: Unused
+- 18..20: Execution condition
+  |---+-------------------------|
+  | 0 | Execute                 |
+  | 1 | Execute if Zero         |
+  | 2 | Execute if > 0          |
+  | 3 | Execute if >= 0         |
+  | 4 | Execute if != 0         |
+  | 5 | Execute if < 0          |
+  | 6 | Execute if <= 0         |
+  | 7 | Execute and Write Flags |
+  |---+-------------------------|
+- 21: Unused
 - 22: Skip next instruction flag. Don't execute the next instruction
 - 23: Stop execution
 

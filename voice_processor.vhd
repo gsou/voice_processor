@@ -13,9 +13,12 @@ entity voice_processor is
     ctrl_read1_o : out std_logic_vector(4 downto 0);
     ctrl_read2_o : out std_logic_vector(4 downto 0);
     ctrl_write_o : out integer range 0 to NUMREGS - 1;
+    ctrl_exec_cond_o : out std_logic_vector(2 downto 0);
 
     ctrl_inc_pc_o : out std_logic;
     done_o : out std_logic;
+
+
     -- Data
     start_i : in std_logic;
     instr_i : in std_logic_vector(23 downto 0));
@@ -32,6 +35,7 @@ architecture rtl of voice_processor is
   signal reg2 : std_logic_vector(3 downto 0);
   signal regW : std_logic_vector(3 downto 0);
   signal last_regW : std_logic_vector(3 downto 0);
+  signal exec_cond : std_logic_vector(2 downto 0);
   signal special1 : std_logic;
   signal special2 : std_logic;
   signal imm : std_logic;
@@ -48,6 +52,7 @@ begin
   regW <= instr_i (15 downto 12);
   special1 <= instr_i(16);
   special2 <= instr_i(17);
+  exec_cond <= instr_i (20 downto 18);
   imm <= instr_i(22);
   stop <= instr_i(23);
 
@@ -86,6 +91,7 @@ begin
       ctrl_read1_o <= (others => '0');
       ctrl_read2_o <= (others => '0');
       ctrl_write_o <= 0;
+      ctrl_exec_cond_o <= (others => '0');
       ctrl_inc_pc_o <= '0';
       done_o <= '0';
       start_cnt <= '0';
@@ -95,6 +101,7 @@ begin
           ctrl_mux_o <= (others => '0');
           ctrl_read1_o <= (others => '0');
           ctrl_read2_o <= (others => '0');
+          ctrl_exec_cond_o <= (others => '0');
           ctrl_write_o <= 0;
           ctrl_inc_pc_o <= '0';
           done_o <= '0';
@@ -103,6 +110,7 @@ begin
           ctrl_mux_o <= (others => '0');
           ctrl_read1_o <= (others => '0');
           ctrl_read2_o <= (others => '0');
+          ctrl_exec_cond_o <= (others => '0');
           ctrl_write_o <= 0;
           ctrl_inc_pc_o <= '1';
           done_o <= '0';
@@ -111,6 +119,7 @@ begin
           ctrl_mux_o <= opcode;
           ctrl_read1_o <= special1 & reg1;
           ctrl_read2_o <= special2 & reg2;
+          ctrl_exec_cond_o <= exec_cond;
           ctrl_write_o <= to_integer(unsigned(regW));
           ctrl_inc_pc_o <= '1';
           done_o <= '0';
@@ -119,6 +128,7 @@ begin
           ctrl_mux_o <= (others => '0');
           ctrl_read1_o <= (others => '0');
           ctrl_read2_o <= (others => '0');
+          ctrl_exec_cond_o <= (others => '0');
           ctrl_write_o <= 0;
           ctrl_inc_pc_o <= '1';
           done_o <= '0';
@@ -128,6 +138,7 @@ begin
           ctrl_read1_o <= (others => '0');
           ctrl_read2_o <= (others => '0');
           ctrl_write_o <= 0;
+          ctrl_exec_cond_o <= (others => '0');
           ctrl_inc_pc_o <= '0';
           done_o <= '1';
           start_cnt <= '0';
@@ -136,6 +147,7 @@ begin
           ctrl_read1_o <= (others => '0');
           ctrl_read2_o <= (others => '0');
           ctrl_write_o <= 0;
+          ctrl_exec_cond_o <= (others => '0');
           ctrl_inc_pc_o <= '0';
           done_o <= '0';
           start_cnt <= '0';
