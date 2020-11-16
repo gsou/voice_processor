@@ -15,20 +15,21 @@ This document is for the 24bit voice processor.
 The 24bit instruction is made of
 
 - 3..0: The ALU Mux position
-  |---+----------------------------------------------------|
-  | 0 | Oscillator (W <= OscillatorType[R2](R1))           |
-  | 1 | TODO Enveloppe                                     |
-  | 2 | TODO LP filter                                     |
-  | 3 | Add instruction (W <= R1 + R2)                     |
-  | 4 | Mul instruction (High part of mult) (W <= R1 * R2) |
-  | 5 | Mov instruction (W <= R1)                          |
-  | 6 | Midi Note to freq (W <= to_freq_step(R1) * R2)     |
-  | 7 | Shr instruction (W <= R1 >> R2)                    |
-  | 8 | Sub instruction (W <= R1 - R2)                     |
-  | 9 | Shr instruction (W <= R1 - R2)                     |
-  | C | Mul instruction (Low part of mult) (W <= R1 * R2)  |
-  |   | Others (W <= 0)                                    |
-  |---+----------------------------------------------------|
+  |---+--------------------------------------------------------|
+  | 0 | Oscillator (W <= OscillatorType[R2](R1))               |
+  | 1 | Enveloppe Type ADS (R2 is Param, R1 is current sample) |
+  | 2 | Enveloppe Type R (R1 is the midi)                      |
+  | 3 | Add instruction (W <= R1 + R2)                         |
+  | 4 | Mul instruction (High part of mult) (W <= R1 * R2)     |
+  | 5 | Mov instruction (W <= R1)                              |
+  | 6 | Midi Note to freq (W <= to_freq_step(R1) * R2)         |
+  | 7 | Shr instruction (W <= R1 >> R2)                        |
+  | 8 | Sub instruction (W <= R1 - R2)                         |
+  | 9 | Shr instruction (W <= R1 - R2)                         |
+  | A | And instruction (W <= R1 & R2)                         |
+  | C | Mul instruction (Low part of mult) (W <= R1 * R2)      |
+  |   | Others (W <= 0)                                        |
+  |---+--------------------------------------------------------|
 - 7..4: Register 1 Selection
   In register mode, this is the register ID. In special mode, it is:
   |---+------------------------------------------------------------|
@@ -68,9 +69,22 @@ The 24bit instruction is made of
 - 22: Skip next instruction flag. Don't execute the next instruction
 - 23: Stop execution
 
+
 * Instruction memory
 
 Instruction memory is expected to have 1 cycle of latency
+
+* Enveloppe
+
+The enveloppe instruction takes 4x6bits parameters in its R2 Register.
+- 23..18 : Step for Attack, the higher the shorter the attack. (0 to 63)
+  Time of attack is: $ 131072 / (a^2) $ samples. So the possible attack
+  times are from $0.75ms$ to $2.97s$.
+- 17..12 : Number of blocks of 64 samples before delay. 0 to 63 squared.
+  Thus the times are between $1ms$ and $5.9s$
+- 11..6 : Step for Sustain.
+- 5..0 : Level of sustain
+
 
 * Example program
 

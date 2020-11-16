@@ -162,4 +162,11 @@ package voice is
       );
   end component;
 
+  component time_lookup is
+    port (
+      lookup_i : in std_logic_vector(5 downto 0);
+      der_o : out std_logic_vector(11 downto 0);
+      time_o : out std_logic_vector(23 downto 0));
+  end component;
+
 end voice;

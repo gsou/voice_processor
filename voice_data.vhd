@@ -27,6 +27,7 @@ architecture rtl of voice_data is
 
   signal osc_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
   signal env_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
+  signal rel_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
   signal lp_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
   signal add_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
   signal sub_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
@@ -39,16 +40,27 @@ architecture rtl of voice_data is
 
   signal sine_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
 
+  signal a_threshold : std_logic_vector(11 downto 0);
+  signal d_threshold : std_logic_vector(23 downto 0);
+  signal s_threshold : std_logic_vector(11 downto 0);
+  signal a_level     : std_logic_vector(WIDTH_REGS + 11 downto 0);
+  signal s_delta     : std_logic_vector(WIDTH_REGS + 11 downto 0);
+  signal ad_sat      : std_logic_vector(WIDTH_REGS - 1 downto 0);
+  signal s_level     : std_logic_vector(WIDTH_REGS + 11 downto 0);
+  signal s_sat       : std_logic_vector(WIDTH_REGS - 1 downto 0);
+  signal sus_level   : std_logic_vector(WIDTH_REGS - 1 downto 0);
+  signal sus_comp    : std_logic_vector(WIDTH_REGS + 11 downto 0);
+
 begin
 
   -- Output muxing
   data_out_o <= data_out;
-  process (ctrl_mux_i, osc_out, env_out, lp_out, add_out, mul_out, mov_out, midi_out, shr_out, sub_out, shl_out)
+  process (ctrl_mux_i, osc_out, env_out, lp_out, add_out, mul_out, mov_out, midi_out, shr_out, sub_out, shl_out, rel_out)
   begin
     case ctrl_mux_i is
       when "0000" => data_out <= osc_out;
       when "0001" => data_out <= env_out;
-      when "0010" => data_out <= lp_out;
+      when "0010" => data_out <= rel_out;
       when "0011" => data_out <= add_out;
       when "0100" => data_out <= mul_out(2*WIDTH_REGS -1 downto WIDTH_REGS);
       when "0101" => data_out <= mov_out;
@@ -87,9 +99,23 @@ begin
     end case;
   end process;
 
-  -- TODO Combinatorial Enveloppe
-  -- For now it is only on when key pressed
-  env_out <= (others => data_in1_i(7));
+  -- Combinatorial Enveloppe
+  attack  : time_lookup port map (lookup_i => data_in2_i(23 downto 18), der_o => a_threshold, time_o => open);
+  delay   : time_lookup port map (lookup_i => data_in2_i(17 downto 12), der_o => open,        time_o => d_threshold);
+  sustain : time_lookup port map (lookup_i => data_in2_i(11 downto  6), der_o => s_threshold, time_o => open);
+  a_level <= std_logic_vector(unsigned(a_threshold) * unsigned(data_in1_i));
+  ad_sat  <= a_level(WIDTH_REGS - 6 downto 0) & "00000" when unsigned(a_level(WIDTH_REGS + 10 downto WIDTH_REGS - 5)) = 0 else (others => '1');
+  s_delta <= std_logic_vector ( ( unsigned(data_in1_i) - unsigned(d_threshold) ) * unsigned(s_threshold) );
+  s_level <= std_logic_vector(  (WIDTH_REGS - 1 downto 0 => '1', WIDTH_REGS + 11 downto WIDTH_REGS => '0') -
+                                (unsigned(s_delta(WIDTH_REGS - 6 downto 0)) & "00000")  );
+  s_sat   <= sus_level when signed(s_level) < signed(sus_comp) else s_level(WIDTH_REGS-1 downto 0);
+  sus_level(WIDTH_REGS - 1 downto WIDTH_REGS - 6) <= data_in2_i(5 downto 0);
+  sus_level(WIDTH_REGS - 7 downto 0) <= (others => '0');
+  sus_comp <= (11 downto 0 => '0') & sus_level ;
+  env_out <= ad_sat when unsigned(data_in1_i) < unsigned(d_threshold) else s_sat;
+
+  rel_out <= (others => data_in1_i(7));
+
 
   -- TODO Combinatorial Filter
   lp_out <= (others => '0');
@@ -116,4 +142,5 @@ begin
 
   -- Sine lookup
   sine : sine_lookup port map (counter_i => unsigned(data_in1_i(WIDTH_REGS - 1 downto WIDTH_REGS - 8)), freq_o => sine_out);
+
 end;
