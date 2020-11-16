@@ -17,7 +17,7 @@ entity voice_controller is
     sample_i : in std_logic;
 
     -- Memory interface
-    i_addr_o : out std_logic_vector(4 downto 0);
+    i_addr_o : out std_logic_vector(7 downto 0);
     i_data_i : in std_logic_vector(23 downto 0);
 
     -- Accept Midi commands (serial)
@@ -52,7 +52,7 @@ architecture rtl of voice_controller is
   signal done : std_logic;
   signal start_proc : std_logic;
   signal instr : std_logic_vector(23 downto 0);
-  signal program_counter : std_logic_vector(4 downto 0);
+  signal program_counter : std_logic_vector(7 downto 0);
   signal last_sample : std_logic;
 
   -- Parallel voices arrays

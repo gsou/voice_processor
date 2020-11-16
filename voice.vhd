@@ -17,7 +17,7 @@ package voice is
       sample_i : in std_logic;
       sample_o : out std_logic_vector(23 downto 0);
       -- Memory interface
-      i_addr_o : out std_logic_vector(4 downto 0);
+      i_addr_o : out std_logic_vector(7 downto 0);
       i_data_i : in std_logic_vector(23 downto 0);
       -- Accept Midi commands
       midi_ev_i : in std_logic;
