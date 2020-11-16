@@ -33,6 +33,7 @@ architecture rtl of voice_data is
   signal mul_out : std_logic_vector(2*WIDTH_REGS downto 0);
   signal mov_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
   signal midi_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
+  signal and_out : std_logic_vector(WIDTH_REGS - 1 downto 0);
   signal shr_out : signed(WIDTH_REGS - 1 downto 0);
   signal shl_out : unsigned(WIDTH_REGS - 1 downto 0);
 
@@ -55,6 +56,7 @@ begin
       when "0111" => data_out <= std_logic_vector(shr_out);
       when "1000" => data_out <= sub_out;
       when "1001" => data_out <= std_logic_vector(shl_out);
+      when "1010" => data_out <= and_out;
       when "1100" => data_out <= mul_out(WIDTH_REGS - 1 downto 0);
       when others => data_out <= (others => '0');
     end case;
@@ -98,6 +100,9 @@ begin
 
   -- Combinatorial multiplier, should be inferred as a hardware multiplier block
   mul_out <= std_logic_vector(signed(data_in1_i) * signed('0' & data_in2_i));
+
+  -- Logic
+  and_out <= data_in1_i and data_in2_i;
 
   -- Mov
   mov_out <= data_in1_i;
