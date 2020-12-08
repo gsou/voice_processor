@@ -14,6 +14,8 @@ entity voice_data is
     data_in2_i : in std_logic_vector(WIDTH_REGS - 1 downto 0);
     data_out_o : out std_logic_vector(WIDTH_REGS - 1 downto 0);
 
+    data_filter_i: in std_logic_vector(WIDTH_REGS - 1 downto 0);
+
     -- Flags
     flags_o : out std_logic_vector(1 downto 0));
 
@@ -55,7 +57,7 @@ begin
 
   -- Output muxing
   data_out_o <= data_out;
-  process (ctrl_mux_i, osc_out, env_out, lp_out, add_out, mul_out, mov_out, midi_out, shr_out, sub_out, shl_out, rel_out)
+  process (ctrl_mux_i, osc_out, env_out, lp_out, add_out, mul_out, mov_out, midi_out, shr_out, sub_out, shl_out, rel_out, data_filter_i)
   begin
     case ctrl_mux_i is
       when "0000" => data_out <= osc_out;
@@ -69,6 +71,7 @@ begin
       when "1000" => data_out <= sub_out;
       when "1001" => data_out <= std_logic_vector(shl_out);
       when "1010" => data_out <= and_out;
+      when "1011" => data_out <= data_filter_i;
       when "1100" => data_out <= mul_out(WIDTH_REGS - 1 downto 0);
       when others => data_out <= (others => '0');
     end case;

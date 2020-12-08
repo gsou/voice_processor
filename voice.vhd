@@ -43,6 +43,7 @@ package voice is
       data_write_i : in  std_logic_vector(WIDTH_REGS   - 1 downto 0);
       data_read1_o : out std_logic_vector(WIDTH_REGS   - 1 downto 0);
       data_read2_o : out std_logic_vector(WIDTH_REGS   - 1 downto 0);
+      data_write_o : out std_logic_vector(WIDTH_REGS   - 1 downto 0);
       data_sample_o : out std_logic_vector(WIDTH_REGS - 1 downto 0)
       );
   end component;
@@ -56,6 +57,9 @@ package voice is
       data_in1_i : in std_logic_vector(WIDTH_REGS - 1 downto 0);
       data_in2_i : in std_logic_vector(WIDTH_REGS - 1 downto 0);
       data_out_o : out std_logic_vector(WIDTH_REGS - 1 downto 0);
+
+      data_filter_i: in std_logic_vector(WIDTH_REGS - 1 downto 0);
+
       flags_o : out std_logic_vector(1 downto 0));
   end component;
 
@@ -168,5 +172,22 @@ package voice is
       der_o : out std_logic_vector(11 downto 0);
       time_o : out std_logic_vector(23 downto 0));
   end component;
+
+component voice_filter is
+  generic (N_BITS : natural := 24; VOICES : natural := 1);
+  port (
+    clk_i : in std_logic;
+    rst_i : in std_logic;
+    srst_i : std_logic;
+
+    ctrl_bank_i  : in integer range 0 to VOICES - 1;
+    enable_i : std_logic;
+    filter_freq_i : in std_logic_vector(N_BITS-1 downto 0);
+    filter_quality_i : in std_logic_vector(N_BITS-1 downto 0);
+
+    x_i : in std_logic_vector(N_BITS-1 downto 0);
+    y_o : out std_logic_vector(N_BITS-1 downto 0)
+);
+end component;
 
 end voice;

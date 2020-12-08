@@ -27,6 +27,7 @@ The 24bit instruction is made of
   | 8 | Sub instruction (W <= R1 - R2)                         |
   | 9 | Shr instruction (W <= R1 - R2)                         |
   | A | And instruction (W <= R1 & R2)                         |
+  | B | Lowpass Filter (W <= Filter(W, freq=R1, q=R2))         |
   | C | Mul instruction (Low part of mult) (W <= R1 * R2)      |
   |   | Others (W <= 0)                                        |
   |---+--------------------------------------------------------|

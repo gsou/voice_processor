@@ -45,6 +45,7 @@ architecture rtl of voice_controller is
   signal ctrl_write : integer range 0 to NUMREGS - 1;
   signal ctrl_exec : std_logic_vector(2 downto 0);
   signal ctrl_mux   : std_logic_vector(3 downto 0);
+  signal filter_enable : std_logic;
 
   -- Master Statemachine IO (Serial voices)
   signal ctrl_bank : integer range 0 to VOICES - 1;
@@ -71,6 +72,8 @@ architecture rtl of voice_controller is
   signal data_sample : data_poly_t;
   signal data_sample_cnt : data_poly_t;
   signal data_write : data_poly_t;
+  signal data_writeread: data_poly_t;
+  signal data_write_filter : data_poly_t;
   signal data_read1 : data_poly_t;
   signal data_read1_imm : data_poly_t;
   signal data_read1_sp : data_poly_t;
@@ -82,7 +85,6 @@ architecture rtl of voice_controller is
   type exec_flags_t is array(POLY-1 downto 0) of std_logic_vector(1 downto 0);
   signal reg_enable    : std_logic_vector(POLY - 1 downto 0);
   signal reg_flags   : exec_flags_t;
-
   type sample_counter_t is array (VOICES-1 downto 0) of data_poly_t;
   signal sample_counter : sample_counter_t;
 
@@ -204,16 +206,28 @@ begin
     register_bank : voice_bank generic map (VOICES => VOICES, NUMREGS => 16, WIDTH_REGS => 24)
       port map (rst_i => rst_i, clk_i => clk_i, ctrl_bank_i => ctrl_bank, ctrl_read1_i => ctrl_read1_bank,
                 ctrl_read2_i => ctrl_read2_bank, ctrl_write_i => ctrl_write, ctrl_write_en_i => reg_enable(i),
-                data_write_i => data_write(i), data_read1_o => data_read1(i), data_read2_o => data_read2(i), data_sample_o => data_sample(i));
+                data_write_i => data_write(i), data_read1_o => data_read1(i), data_read2_o => data_read2(i),
+                data_write_o => data_writeread(i), data_sample_o => data_sample(i));
 
     flags : voice_flags port map (clk_i => clk_i, rst_i => rst_i, exec_i => ctrl_exec, flags_i => reg_flags(i), enable_o => reg_enable(i));
 
     alu: voice_data generic map (WIDTH_REGS => 24)
-      port map (ctrl_mux_i => ctrl_mux, data_in1_i => data_read1_imm(i), data_in2_i => data_read2_imm(i), data_out_o => data_write(i), flags_o => reg_flags(i));
+      port map (ctrl_mux_i => ctrl_mux, data_in1_i => data_read1_imm(i), data_in2_i => data_read2_imm(i),
+                data_out_o => data_write(i), data_filter_i => data_write_filter(i), flags_o => reg_flags(i));
+
+    -- TODO Filter reset
+    fil: voice_filter generic map (N_BITS => 24, VOICES => VOICES)
+      port map (clk_i => clk_i, rst_i => rst_i, srst_i=> '0',
+                ctrl_bank_i => ctrl_bank, enable_i => filter_enable,
+                filter_freq_i => data_read1_imm(i), filter_quality_i => data_read2_imm(i),
+                x_i => data_writeread(i), y_o => data_write_filter(i));
+
   end generate;
 
   ctrl_read1_bank <= to_integer(unsigned(ctrl_read1(3 downto 0)));
   ctrl_read2_bank <= to_integer(unsigned(ctrl_read2(3 downto 0)));
+
+  filter_enable <= '1' when ctrl_mux = "1011" else '0';
 
   processor : voice_processor generic map (NUMREGS => NUMREGS)
     port map (rst_i => rst_i, clk_i => clk_i, ctrl_mux_o => ctrl_mux, ctrl_read1_o => ctrl_read1,

@@ -20,6 +20,7 @@ entity voice_bank is
     data_write_i : in  std_logic_vector(WIDTH_REGS   - 1 downto 0);
     data_read1_o : out std_logic_vector(WIDTH_REGS   - 1 downto 0);
     data_read2_o : out std_logic_vector(WIDTH_REGS   - 1 downto 0);
+    data_write_o : out std_logic_vector(WIDTH_REGS   - 1 downto 0);
     data_sample_o : out std_logic_vector(WIDTH_REGS - 1 downto 0)
     );
 end entity;
@@ -35,6 +36,7 @@ begin
   -- Async reads, this should be inferred as an Async bloc ram read
   data_read1_o <= regs(ctrl_bank_i, ctrl_read1_i);
   data_read2_o <= regs(ctrl_bank_i, ctrl_read2_i);
+  data_write_o <= regs(ctrl_bank_i, ctrl_write_i);
   -- Last register is always output sample
   data_sample_o <= regs(ctrl_bank_i, NUMREGS - 1);
   -- Sync Writes
