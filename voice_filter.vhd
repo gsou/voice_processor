@@ -63,13 +63,13 @@ begin
 
 
   scaled_bandpass <= std_logic_vector(signed('0' & filter_quality_i) * signed(bandpass_f(ctrl_bank_i)));
-  highpass <= std_logic_vector( signed(x_f(ctrl_bank_i)) - signed(lowpass_f(ctrl_bank_i)) -  signed(scaled_bandpass(2*N_BITS-1 downto N_BITS)) ) ;
+  highpass <= std_logic_vector( signed(x_f(ctrl_bank_i)) - signed(lowpass_f(ctrl_bank_i)) -  signed(scaled_bandpass(2*N_BITS-2 downto N_BITS-1)) ) ;
 
   scaled_highpass <= std_logic_vector(signed('0' & filter_freq_i) * signed(highpass));
-  bandpass <= std_logic_vector( signed(scaled_highpass(2*N_BITS-1 downto N_BITS)) + signed(bandpass_f(ctrl_bank_i)) );
+  bandpass <= std_logic_vector( signed(scaled_highpass(2*N_BITS-2 downto N_BITS-1)) + signed(bandpass_f(ctrl_bank_i)) );
 
   scaled_lowpass <= std_logic_vector(signed('0' & filter_freq_i) * signed(bandpass));
-  lowpass <= std_logic_vector( signed(scaled_lowpass(2*N_BITS-1 downto N_BITS)) + signed(lowpass_f(ctrl_bank_i)) );
+  lowpass <= std_logic_vector( signed(scaled_lowpass(2*N_BITS-2 downto N_BITS-1)) + signed(lowpass_f(ctrl_bank_i)) );
 
   y_o <= lowpass_f(ctrl_bank_i);
 
