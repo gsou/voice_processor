@@ -6,9 +6,9 @@ use work.voice.all;
 
 entity voice_controller is
   generic (NUMREGS : natural := 16;
-           VOICES : natural := 4; -- Serial voices, allows different sounds
+           VOICES : natural := 8; -- Serial voices, allows different sounds
                                   -- (different instructions)
-           POLY : natural := 1    -- Polyphony, computer in parallel (must use
+           POLY : natural := 2    -- Polyphony, computer in parallel (must use
                                   -- same instructions)
            );
   port (
