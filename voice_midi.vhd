@@ -4,7 +4,7 @@ use IEEE.std_logic_1164.ALL;
 use work.voice.ALL;
 
 entity voice_midi is
-  generic (VOICES : natural := 1; POLY : natural := 8); -- Polyphony of the midi controller
+  generic (VOICES : natural := 1; POLY : natural := 6); -- Polyphony of the midi controller
   port (
     rst_i : in std_logic;
     clk_i : in std_logic;
@@ -12,6 +12,11 @@ entity voice_midi is
     -- Serial data input
     data_i : in std_logic_vector(7 downto 0);
     ready_i : in std_logic;
+
+    -- Midi Reprogrammer
+    inst_data_o : out std_logic_vector(23 downto 0);
+    inst_addr_o : out std_logic_vector(7 downto 0);
+    inst_en_o : out std_logic;
 
     -- TODO Note disable from controller, for now its just on release
     -- TODO Allow sample counter to be used for enveloppes by reseting it on
@@ -36,7 +41,7 @@ architecture rtl of voice_midi is
   signal reg_midi_vel : channel_midi_vel;
 
   -- Midi decoder state machine
-  type state_t is (CMD, VAL1, VAL2, EXEC);
+  type state_t is (CMD, VAL1, VAL2, EXEC, PROG);
   signal state : state_t;
 
   -- Midi command
@@ -69,6 +74,9 @@ architecture rtl of voice_midi is
     return true;
   end function;
 
+  -- Reprogramming
+  signal reprog_addr : std_logic_vector(7 downto 0);
+  signal reprog_msb : std_logic_vector(7 downto 0);
 
 begin
 
@@ -84,8 +92,10 @@ begin
       case state is
         when CMD  => if ready_i = '1' and data_i(7) = '1' then state <= VAL1; end if;
         when VAL1 => if ready_i = '1' then state <= VAL2; end if;
-        when VAL2 => if ready_i = '1' then state <= EXEC; end if;
+        when VAL2 => if ready_i = '1' then if midi_command = x"FF" then state <= PROG; else state <= EXEC; end if; end if;
         when EXEC => state <= CMD;
+        when PROG => state <= CMD;
+        when others => state <= CMD;
       end case;
     end if;
   end process;
@@ -104,6 +114,10 @@ begin
           reg_midi_vel(j)(i) <= (others => '0');
         end loop;
       end loop;
+      reprog_addr <= (others => '0');
+      reprog_msb <= (others => '0');
+      inst_en_o <= '0';
+
     elsif rising_edge(clk_i) then
       for j in 0 to VOICES-1 loop
         for i in 0 to POLY - 1 loop
@@ -111,11 +125,15 @@ begin
         end loop;
       end loop;
       case state is
-        when CMD => midi_command <= data_i;
+        when CMD => midi_command <= data_i; inst_en_o <= '0';
         when VAL1 => midi_value1 <= data_i;
         when VAL2 => midi_value2 <= data_i;
         when EXEC =>
-          if midi_command(7 downto 4) = "1001" then
+          if midi_command = x"FE" then
+            -- Progamming address
+            reprog_addr <= midi_value1;
+            reprog_msb <= midi_value2;
+          elsif midi_command(7 downto 4) = "1001" then
             -- Note ON
             -- TODO Allow to use multiples voices for one note
             if allow_to_alloc(reg_midi_key, midi_value1(6 downto 0)) then
@@ -140,6 +158,10 @@ begin
               midi_modwheel_o <= midi_value2(6 downto 0);
             end if;
           end if;
+        when PROG =>
+          inst_en_o <= '1';
+          inst_addr_o <= reprog_addr;
+          inst_data_o <= reprog_msb & midi_value1 & midi_value2;
         when others =>
           midi_command <= (others => '0');
           midi_value1 <= (others => '0');

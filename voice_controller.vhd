@@ -19,6 +19,9 @@ entity voice_controller is
     -- Memory interface
     i_addr_o : out std_logic_vector(7 downto 0);
     i_data_i : in std_logic_vector(23 downto 0);
+    i_wr_data_o : out std_logic_vector(23 downto 0);
+    i_wr_addr_o : out std_logic_vector(7 downto 0);
+    i_wr_en_o : out std_logic;
 
     -- Accept Midi commands (serial)
     midi_data_i : in std_logic_vector(7 downto 0);
@@ -123,7 +126,9 @@ begin
   midi_ctrl : voice_midi generic map( VOICES => VOICES, POLY => POLY )
     port map (rst_i => rst_i, clk_i => clk_i, data_i => midi_data_i, ready_i => midi_rdy_i,
               midi_bank_i => ctrl_bank, midi_key_o => midi_key, midi_vel_o => midi_vel, midi_modwheel_o => midi_mod,
-              note_set_o => note_set);
+              note_set_o => note_set,
+              inst_data_o => i_wr_data_o, inst_addr_o => i_wr_addr_o, inst_en_o => i_wr_en_o
+              );
 
   -- Main statemachine
   process (rst_i, clk_i)

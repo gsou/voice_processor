@@ -19,6 +19,9 @@ package voice is
       -- Memory interface
       i_addr_o : out std_logic_vector(7 downto 0);
       i_data_i : in std_logic_vector(23 downto 0);
+      i_wr_data_o : out std_logic_vector(23 downto 0);
+      i_wr_addr_o : out std_logic_vector(7 downto 0);
+      i_wr_en_o : out std_logic;
       -- Accept Midi commands
       midi_ev_i : in std_logic;
       midi_rel_i : in std_logic;
@@ -132,6 +135,11 @@ package voice is
       -- Serial data input
       data_i : in std_logic_vector(7 downto 0);
       ready_i : in std_logic;
+
+      -- Midi Reprogrammer
+      inst_data_o : out std_logic_vector(23 downto 0);
+      inst_addr_o : out std_logic_vector(7 downto 0);
+      inst_en_o : out std_logic;
 
       -- TODO Note disable from controller, for now its just on release
       -- TODO Allow sample counter to be used for enveloppes by reseting it on
