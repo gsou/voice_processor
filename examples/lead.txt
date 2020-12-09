@@ -1,0 +1,63 @@
+
+01C025 -- MOV RC, $MIDI
+02A1C6 -- MIDI RA, RC
+0219A0 -- SQR R1, RA
+021C17 -- SHR R1, R1, 4
+
+02C7C3 -- ADD RC, RC, 12
+02A1C6 -- MIDI RA, RC
+42A0A3 -- ADD RA, RA, $$
+200000
+022BA0 -- TRI R2, RA
+022C27 -- SHR R2, R2, 4
+001213 -- ADD R1, R1, R2
+
+02A1C6 -- MIDI RA, RC
+42A0A8 -- SUB RA, RA, $$
+200000
+022BA0 -- TRI R2, RA
+022C27 -- SHR R2, R2, 4
+001213 -- ADD R1, R1, R2
+
+-- Main gain
+021A17 -- SHR R1, R1, 2
+
+-- Tremolo effect
+  -- Fast LFO
+43D01C -- MUL[LOW] RD, $SAMPLE, 0x500
+000E00
+  -- LFO TYPE
+02DBD0 -- SIN RD, RD
+  -- LFO AMPLITUDE
+42D0D4 -- MUL RD, RD, $$
+A00000
+  -- LFO Enveloppe
+43E011 -- ENV RE
+0FF05F -- 0b 0000 11_11 1111_ 0000 01_11 1111
+00DED4 -- MUL RD, RD, RE
+  -- LFO Offset
+42D0D3 -- ADD RD, RD, $$
+800000
+
+
+-- Filter
+  -- Filter frequency
+43A049 -- SHL RA, $MOD, 17
+000010
+  -- Filter resonance (max)
+4210AB -- FIL R1, RA, 0xC00000
+200000
+
+
+-- Amplitude modulation with LFO
+001D14 -- MUL R1, R1, RD
+
+-- Output enveloppe
+43E011 -- ENV RE,
+7C805F -- 0b 0111 11_00 1000_ 0000 01_01 1111
+00FE14 -- MUL RF, RE, R1
+01E022 -- ENV RE
+00FEF4 -- MUL RF, RF, RE
+
+800000
+800000
