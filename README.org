@@ -2,11 +2,11 @@
 
 This document is for the 24bit voice processor.
 
-* Features
+* Features & Objectives
 
 - Works at over 50MHz
 - Serial execution of multiple voices.
-- Each voice can have completely different
+- Each voice can have completely different instrument code
 - 1 cycle execution for osillators, enveloppes, filters
 - 2 cycle execution of commands with immediate values
 
