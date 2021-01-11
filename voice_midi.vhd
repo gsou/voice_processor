@@ -133,25 +133,25 @@ begin
             -- Progamming address
             reprog_addr <= midi_value1;
             reprog_msb <= midi_value2;
+          elsif midi_command(7 downto 4) = "1000" or midi_value2 = x"00" then
+            -- Note OFF
+            for j in 0 to VOICES-1 loop
+              for i in 0 to POLY - 1 loop
+                if midi_value1(6 downto 0) = reg_midi_key(j)(i)(6 downto 0) then
+                  reg_midi_key(j)(i) <= '0' & midi_value1(6 downto 0);
+                  reg_midi_vel(j)(i) <= midi_value2(6 downto 0);
+                end if;
+              end loop;
+            end loop;
           elsif midi_command(7 downto 4) = "1001" then
             -- Note ON
             -- TODO Allow to use multiples voices for one note
             if allow_to_alloc(reg_midi_key, midi_value1(6 downto 0)) then
               channel_sel := which_to_alloc(reg_midi_key);
-              reg_midi_key(channel_sel / POLY)(channel_sel rem POLY) <= midi_command(4) & midi_value1(6 downto 0);
+              reg_midi_key(channel_sel / POLY)(channel_sel rem POLY) <= '1' & midi_value1(6 downto 0);
               reg_midi_vel(channel_sel / POLY)(channel_sel rem POLY) <= midi_value2(6 downto 0);
               note_set_o(channel_sel / POLY, channel_sel rem POLY) <= '1';
             end if;
-          elsif midi_command(7 downto 4) = "1000" then
-            -- Note OFF
-            for j in 0 to VOICES-1 loop
-              for i in 0 to POLY - 1 loop
-                if midi_value1(6 downto 0) = reg_midi_key(j)(i)(6 downto 0) then
-                  reg_midi_key(j)(i) <= midi_command(4) & midi_value1(6 downto 0);
-                  reg_midi_vel(j)(i) <= midi_value2(6 downto 0);
-                end if;
-              end loop;
-            end loop;
           elsif midi_command(7 downto 4) = "1011" then
             -- Controller, only modwheel is supported
             if midi_value1 = "00000001" then
