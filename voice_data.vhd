@@ -111,9 +111,9 @@ begin
   s_delta <= std_logic_vector ( ( unsigned(data_in1_i) - unsigned(d_threshold) ) * unsigned(s_threshold) );
   s_level <= std_logic_vector(  (WIDTH_REGS - 1 downto 0 => '1', WIDTH_REGS + 11 downto WIDTH_REGS => '0') -
                                 (unsigned(s_delta(WIDTH_REGS - 6 downto 0)) & "00000")  );
-  s_sat   <= sus_level when signed(s_level) < signed(sus_comp) else s_level(WIDTH_REGS-1 downto 0);
+  s_sat   <= sus_level when signed(s_level) < signed(sus_comp) or signed(s_level) < 0 else s_level(WIDTH_REGS-1 downto 0);
   sus_level(WIDTH_REGS - 1 downto WIDTH_REGS - 6) <= data_in2_i(5 downto 0);
-  sus_level(WIDTH_REGS - 7 downto 0) <= (others => '0');
+  sus_level(WIDTH_REGS - 7 downto 0) <= (others => '1');
   sus_comp <= (11 downto 0 => '0') & sus_level ;
   env_out <= ad_sat when unsigned(data_in1_i) < unsigned(d_threshold) else s_sat;
 
